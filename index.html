@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>曼巴信用卡繳費管理</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23534AB7'/%3E%3Ctext x='50' y='68' font-size='55' text-anchor='middle' fill='white'%3E%F0%9F%92%B3%3C/text%3E%3C/svg%3E"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<meta name="theme-color" content="#534AB7"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="信用卡繳費"/>
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#171a21; --card:#1c1f28; --bd:#2a2e38; --tx:#f0f1f4; --tx2:#a8adb8; --tx3:#6b7180;
+    --accent:#534AB7; --used:#F59E0B; --paid:#1D9E75; --none:#3a3f4b;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei",sans-serif;padding:16px;max-width:520px;margin:0 auto;min-height:100vh}
+  h1{font-size:19px;font-weight:800;margin:4px 0 16px;display:flex;align-items:center;gap:8px}
+  .month-bar{position:relative;display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:18px;background:var(--bg2);border-radius:14px;padding:10px}
+  .nav-btn{background:none;border:1.5px solid var(--bd);border-radius:50%;width:34px;height:34px;color:var(--tx2);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .nav-btn:active{background:var(--card)}
+  .month-label{font-size:16px;font-weight:700;min-width:100px;text-align:center}
+  .today-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;padding:6px 12px;border:1.5px solid var(--bd);border-radius:16px;background:none;color:var(--tx2);cursor:pointer}
+  .summary{font-size:13px;color:var(--tx2);text-align:center;margin-bottom:14px}
+  .summary b{color:var(--used)}
+  .card-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+  .card-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:13px;padding:12px 14px}
+  .card-name{flex:1;font-size:16px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .state-btn{border:none;border-radius:11px;padding:9px 14px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;min-width:104px;transition:opacity .15s}
+  .state-btn:active{opacity:.7}
+  .state-none{background:var(--none);color:var(--tx2)}
+  .state-used{background:#3d2e0a;color:var(--used);border:1.5px solid #6b4f0f}
+  .state-paid{background:#0e2e24;color:var(--paid);border:1.5px solid #1a5c44}
+  .qty-ctrl{display:flex;gap:6px;flex-shrink:0;align-items:center}
+  .qty-num{background:none;border:1.5px solid var(--bd);color:var(--tx);border-radius:9px;min-width:44px;height:34px;padding:0 8px;font-size:14px;font-weight:700;cursor:pointer}
+  .qty-num:active{background:var(--card)}
+  .del-btn{background:none;border:none;color:var(--tx3);font-size:18px;cursor:pointer;padding:4px 6px;line-height:1}
+  .del-btn:active{color:#E24B4A}
+  .mark-btns{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+  .fav-btn{background:none;border:none;color:var(--tx3);font-size:19px;cursor:pointer;padding:2px;line-height:1}
+  .fav-btn.is-fav{color:#F5C242}
+  .recurring-btn{background:none;border:none;color:var(--tx3);font-size:13px;cursor:pointer;padding:2px;line-height:1;opacity:.4;filter:grayscale(1)}
+  .recurring-btn.is-recurring{opacity:1;filter:none}
+  .empty-msg{text-align:center;color:var(--tx3);font-size:14px;padding:30px 0}
+  .add-bar{display:flex;gap:8px}
+  .add-bar input{flex:1;font-size:15px;padding:12px 14px;border:1.5px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);outline:none}
+  .add-bar input:focus{border-color:var(--accent)}
+  .add-bar button{background:var(--accent);color:#fff;border:none;border-radius:12px;width:46px;font-size:22px;font-weight:700;cursor:pointer}
+  .add-bar button:active{opacity:.8}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .dot.none{background:var(--none)}
+  .dot.used{background:var(--used)}
+  .dot.paid{background:var(--paid)}
+  .card-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .card-dates{font-size:12.5px;color:var(--tx2)}
+  .card-dates b{color:var(--tx);font-weight:700}
+  .card-dates .balance-val{color:#4FC3E0;font-weight:700}
+  .expiry-warn{color:var(--used);font-weight:600}
+  .expiry-warn b{color:var(--used)}
+  .expiry-bad{color:#FF6B6A;font-weight:700}
+  .expiry-bad b{color:#FF6B6A}
+  .type-badge{font-size:11.5px;font-weight:700;color:var(--accent);margin-left:6px;vertical-align:middle}
+  .view-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+  .view-tab{flex:1;min-width:0;background:none;border:1.5px solid var(--bd);border-radius:12px;padding:9px 6px;font-size:12px;font-weight:700;color:var(--tx3);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .view-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .add-dates{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .add-dates-row{display:flex;gap:8px}
+  .add-dates-row[hidden]{display:none}
+  .add-dates label{flex:1;font-size:12px;color:var(--tx2);display:flex;flex-direction:column;gap:4px}
+  .add-dates input,.add-dates select{font-size:14px;padding:9px 10px;border:1.5px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);outline:none;width:100%}
+  .add-dates input:focus,.add-dates select:focus{border-color:var(--accent)}
+  .task-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:13px;padding:12px 14px;margin-bottom:10px}
+  .task-check{flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--bd);background:none;cursor:pointer;color:var(--paid);font-size:14px;display:flex;align-items:center;justify-content:center}
+  .task-check.done{background:var(--paid);border-color:var(--paid);color:#fff}
+  .task-main{flex:1;min-width:0}
+  .task-name{font-size:15px;font-weight:700}
+  .task-name.done{color:var(--tx3);text-decoration:line-through;font-weight:500}
+  .task-period{font-size:12px;color:var(--tx2);font-weight:600}
+  .task-section-label{font-size:12.5px;color:var(--tx2);font-weight:700;margin:10px 2px 6px}
+  .tool-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+  .tool-btn{flex:1 1 0;min-width:0;background:none;border:1.5px solid var(--bd);border-radius:12px;padding:8px 6px;font-size:11.5px;font-weight:600;color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tool-btn:active{background:var(--card)}
+  .group-label{font-size:12.5px;color:var(--tx2);font-weight:700;margin:2px 2px -2px;cursor:pointer;display:flex;align-items:center;gap:4px;user-select:none;padding:4px 2px}
+  .group-label .arrow{font-size:9px;transition:transform .15s}
+  .group-label.collapsed .arrow{transform:rotate(-90deg)}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;padding:20px 14px;overflow-y:auto;z-index:100}
+  .modal-box{background:var(--bg2);border-radius:16px;padding:18px;max-width:520px;width:100%;margin:20px 0}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .modal-head h2{font-size:16px;margin:0}
+  .modal-close{background:none;border:1.5px solid var(--bd);border-radius:50%;width:30px;height:30px;color:var(--tx2);font-size:16px;cursor:pointer}
+  .year-block{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;margin-bottom:8px}
+  .year-block.this-month{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .this-month-tag{display:inline-block;font-size:10.5px;font-weight:700;color:#fff;background:var(--accent);border-radius:6px;padding:1px 7px;vertical-align:middle}
+  .year-block .m-title{font-size:14px;font-weight:800;color:var(--tx);margin-bottom:6px}
+  .year-block .m-empty{font-size:12.5px;color:var(--tx3)}
+  .m-item{font-size:13.5px;display:flex;align-items:center;gap:6px;padding:3px 0}
+  .m-item .dot{flex-shrink:0}
+  .m-sub-label{font-size:11.5px;color:var(--tx2);font-weight:700;letter-spacing:.3px;margin:10px 0 4px;padding-top:8px;border-top:1px solid var(--bd)}
+  .m-sub-label:first-of-type{margin-top:0;padding-top:0;border-top:none}
+</style>
+</head>
+<body>
+  <h1>💳 曼巴信用卡繳費管理</h1>
+
+  <div class="tool-bar">
+    <button class="tool-btn" id="reset-btn">↺ 重置本月</button>
+    <button class="tool-btn" id="yearly-btn">📊 年度總覽</button>
+    <button class="tool-btn" id="guess-bank-btn">🏦 判斷銀行</button>
+    <button class="tool-btn" id="export-btn">⭳ 匯出備份</button>
+    <button class="tool-btn" id="import-btn">⭱ 匯入備份</button>
+    <button class="tool-btn" id="sync-btn">☁️ 雲端同步</button>
+  </div>
+
+  <div class="view-tabs">
+    <button class="view-tab" id="view-checklist-btn">✅ 提醒清單</button>
+    <button class="view-tab" id="view-card-btn">💳 信用卡</button>
+    <button class="view-tab" id="view-other-btn">📱 回饋&其他</button>
+  </div>
+
+  <div class="month-bar">
+    <button class="nav-btn" id="prev">‹</button>
+    <span class="month-label" id="month-label"></span>
+    <button class="nav-btn" id="next">›</button>
+    <button class="today-btn" id="today-btn">回本月</button>
+  </div>
+
+  <div id="card-view">
+    <div class="summary" id="summary"></div>
+
+    <div class="card-list" id="card-list"></div>
+
+    <div class="add-bar">
+      <input type="text" id="card-input" placeholder="新增..."/>
+      <button id="add-card-btn">+</button>
+    </div>
+    <div class="add-dates">
+      <label id="bank-label">銀行（用來分組）<input type="text" id="bank-input" placeholder="XX"/></label>
+      <div class="add-dates-row" id="card-fields-row">
+        <label>結帳日<input type="number" id="bill-day-input" min="1" max="31" placeholder="XX"/></label>
+        <label>繳費截止日<input type="number" id="due-day-input" min="1" max="31" placeholder="XX"/></label>
+      </div>
+      <div class="add-dates-row" id="other-fields-row" hidden>
+        <label>剩餘<input type="text" id="balance-input" placeholder="XX"/></label>
+        <label>期限<input type="date" id="expiry-input"/></label>
+      </div>
+    </div>
+  </div>
+
+  <div id="checklist-view" hidden>
+    <div class="summary" id="checklist-summary"></div>
+    <div class="card-list" id="checklist-list"></div>
+    <div class="add-bar">
+      <input type="text" id="task-input" placeholder="新增..."/>
+      <button id="add-task-btn">+</button>
+    </div>
+    <div class="add-dates">
+      <div class="add-dates-row">
+        <label>週期
+          <select id="task-period-input">
+            <option value="month">每月</option>
+            <option value="quarter">每季</option>
+            <option value="halfyear">每半年</option>
+            <option value="year">每年</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="import-file" accept="application/json" style="display:none"/>
+
+<script>
+// ── 資料 ──────────────────────────────────────────────
+// cards: [{id, name}]
+// records: { "YYYY-MM": { [cardId]: {state:"used"|"paid", amt?:number} } }  // 沒有 key 就是「未使用」
+//           （舊資料可能是純字串 "used"/"paid"，讀取時自動相容）
+let cards = [];
+let records = {};
+let nextId = 1;
+let collapsedBanks = []; // 記住哪些銀行分組被收合
+let currentView = 'card'; // 'card'=信用卡, 'other'=行動支付／集點等, 'checklist'=提醒清單
+const isOtherType = c => !!(c.type && c.type!=='信用卡');
+
+// tasks: [{id, name, period:'year'|'month'}]
+// taskDone: { [taskId]: { [periodKey]: true } }  periodKey = 年份 或 "YYYY-MM"
+let tasks = [];
+let taskDone = {};
+let nextTaskId = 1;
+
+// ── 雲端同步 ──────────────────────────────────────────
+const SYNC_API = 'https://cardpay-sync.dwmmamba.workers.dev';
+let syncCode = '';
+
+function loadData(){
+  try{ const r=localStorage.getItem('cardpay_cards'); if(r) cards=JSON.parse(r); }catch(e){}
+  try{ const r=localStorage.getItem('cardpay_records'); if(r) records=JSON.parse(r); }catch(e){}
+  try{ const r=localStorage.getItem('cardpay_tasks'); if(r) tasks=JSON.parse(r); }catch(e){}
+  try{ const r=localStorage.getItem('cardpay_taskdone'); if(r) taskDone=JSON.parse(r); }catch(e){}
+  try{ const r=localStorage.getItem('cardpay_collapsed'); if(r) collapsedBanks=JSON.parse(r); }catch(e){}
+  try{ const r=localStorage.getItem('cardpay_view'); if(r==='card'||r==='other'||r==='checklist') currentView=r; }catch(e){}
+  try{ const r=localStorage.getItem('cardpay_synccode'); if(r) syncCode=r; }catch(e){}
+  nextId = cards.reduce((m,c)=>Math.max(m,c.id),0)+1;
+  nextTaskId = tasks.reduce((m,t)=>Math.max(m,t.id),0)+1;
+  cleanupOrphanRecords();
+}
+// 清掉已刪除卡片留下的孤兒紀錄（避免之後新增的卡片剛好撿到舊編號、繼承到舊狀態）
+function cleanupOrphanRecords(){
+  const validIds = new Set(cards.map(c=>String(c.id)));
+  let changed = false;
+  Object.keys(records).forEach(mk=>{
+    Object.keys(records[mk]).forEach(id=>{
+      if(!validIds.has(String(id))){ delete records[mk][id]; changed = true; }
+    });
+    if(!Object.keys(records[mk]).length) delete records[mk];
+  });
+  if(changed) saveRecords();
+}
+function saveCards(){ try{ localStorage.setItem('cardpay_cards', JSON.stringify(cards)); }catch(e){} }
+function saveRecords(){ try{ localStorage.setItem('cardpay_records', JSON.stringify(records)); }catch(e){} }
+function saveTasks(){ try{ localStorage.setItem('cardpay_tasks', JSON.stringify(tasks)); }catch(e){} }
+function saveTaskDone(){ try{ localStorage.setItem('cardpay_taskdone', JSON.stringify(taskDone)); }catch(e){} }
+function saveCollapsed(){ try{ localStorage.setItem('cardpay_collapsed', JSON.stringify(collapsedBanks)); }catch(e){} }
+function saveView(){ try{ localStorage.setItem('cardpay_view', currentView); }catch(e){} }
+
+// ── 銀行自動判斷 ──────────────────────────────────────
+// 依常見台灣發卡銀行關鍵字比對卡片名稱，由長到短比對避免誤判（例如「中國信託」要贏過「信託」）
+const BANK_KEYWORDS = [
+  '中國信託','中信','國泰世華','國泰','台新','玉山','元大','華南','匯豐','HSBC','渣打',
+  '富邦','兆豐','第一銀行','第一','合作金庫','永豐','星展','DBS','台灣企銀','企銀',
+  '上海商銀','上海銀行','王道','O-Bank','聯邦','遠東','板信','花旗','Citi','台灣銀行',
+  '台銀','澳盛','ANZ','新光','聯邦銀行','高雄銀行','彰化銀行','彰銀','台中銀行','陽信'
+].sort((a,b)=>b.length-a.length);
+function guessBank(name){
+  if(!name) return '';
+  const hit = BANK_KEYWORDS.find(k=>name.includes(k));
+  return hit || '';
+}
+
+// ── 使用期限計算 ──────────────────────────────────────
+function daysUntil(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  return Math.round((d - t) / 86400000);
+}
+// 算出「這期」最近一次的繳費截止日還剩幾天（依真實今天的日期算，不是目前瀏覽的月份）
+function daysUntilDueDay(dueDay){
+  if(!(dueDay>=1 && dueDay<=31)) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  let target = new Date(t.getFullYear(), t.getMonth(), dueDay);
+  if(target < t) target = new Date(t.getFullYear(), t.getMonth()+1, dueDay);
+  return Math.round((target - t) / 86400000);
+}
+
+// ── 月份狀態 ──────────────────────────────────────────
+const today = new Date();
+let curYear = today.getFullYear(), curMonth = today.getMonth(); // 0-based
+function monthKey(y,m){ return `${y}-${String(m+1).padStart(2,'0')}`; }
+
+function getEntry(mk, cardId){
+  const raw = records[mk] && records[mk][cardId];
+  if(!raw) return null;
+  return typeof raw === 'string' ? {state: raw} : raw; // 相容舊字串格式
+}
+function getState(cardId){
+  const entry = getEntry(monthKey(curYear, curMonth), cardId);
+  return entry ? entry.state : 'none';
+}
+function getAmount(cardId){
+  const entry = getEntry(monthKey(curYear, curMonth), cardId);
+  return entry ? entry.amt : undefined;
+}
+function parseBalanceNum(balance){
+  const m = (balance||'').match(/-?\d+(\.\d+)?/);
+  return m ? m[0] : null;
+}
+function setBalanceNum(c, n){
+  if(n < 0) n = 0;
+  const numStr = parseBalanceNum(c.balance);
+  c.balance = numStr ? c.balance.replace(numStr, String(n)) : String(n);
+  saveCards();
+  render();
+}
+function cycleState(cardId){
+  const mk = monthKey(curYear, curMonth);
+  if(!records[mk]) records[mk] = {};
+  const entry = getEntry(mk, cardId) || {state:'none'};
+  if(entry.state==='none'){
+    records[mk][cardId] = {state:'used'};
+  }else if(entry.state==='used'){
+    const amtStr = prompt('已繳金額（可留空）', entry.amt || '');
+    if(amtStr===null) return; // 取消，維持「已使用待繳」
+    const amt = parseFloat(amtStr);
+    const next = {state:'paid'};
+    if(!isNaN(amt) && amt>0) next.amt = amt;
+    records[mk][cardId] = next;
+  }else{ // paid -> none
+    if(!confirm('確定要把「已繳」改回「未使用」嗎？已記錄的金額也會一併清除。')) return;
+    delete records[mk][cardId];
+  }
+  saveRecords();
+  render();
+}
+
+// ── 渲染 ──────────────────────────────────────────────
+function render(){
+  document.getElementById('view-card-btn').classList.toggle('active', currentView==='card');
+  document.getElementById('view-other-btn').classList.toggle('active', currentView==='other');
+  document.getElementById('view-checklist-btn').classList.toggle('active', currentView==='checklist');
+  document.getElementById('card-view').hidden = currentView==='checklist';
+  document.getElementById('checklist-view').hidden = currentView!=='checklist';
+  document.getElementById('card-fields-row').hidden = currentView==='other';
+  document.getElementById('other-fields-row').hidden = currentView!=='other';
+  document.getElementById('bank-label').firstChild.textContent = currentView==='other' ? '業者（用來分組）' : '銀行（用來分組）';
+
+  document.getElementById('month-label').textContent = `${curYear} 年 ${curMonth+1} 月`;
+  const isCurMonth = curYear===today.getFullYear() && curMonth===today.getMonth();
+  document.getElementById('today-btn').style.visibility = isCurMonth ? 'hidden' : 'visible';
+
+  if(currentView==='checklist'){ renderChecklist(); return; }
+
+  const viewCards = cards.filter(c => currentView==='other' ? isOtherType(c) : !isOtherType(c));
+
+  const list = document.getElementById('card-list');
+  list.innerHTML = '';
+  if(!viewCards.length){
+    list.innerHTML = currentView==='other'
+      ? '<div class="empty-msg">還沒有回饋/行動支付/集點等項目，先在下面新增一個吧（新增後點名稱設定類型）</div>'
+      : '<div class="empty-msg">還沒有卡片，先在下面新增一張吧</div>';
+  }else{
+    function renderCardRow(c){
+      const state = getState(c.id);
+      const amt = getAmount(c.id);
+      const row = document.createElement('div'); row.className='card-row';
+      const stateLabel = state==='none' ? '未使用' : state==='used' ? '已使用待繳' : (amt ? `✓ 已繳 $${amt.toLocaleString()}` : '✓ 已繳');
+      const dateParts = [];
+      if(c.billDay) dateParts.push(`結帳 <b>${c.billDay}</b> 號`);
+      if(c.dueDay){
+        if(state==='used'){
+          const dueDays = daysUntilDueDay(c.dueDay);
+          if(dueDays!==null && dueDays<=7){
+            dateParts.push(`<span class="expiry-warn">⚠️ 截止 <b>${c.dueDay}</b> 號（剩 ${dueDays} 天）</span>`);
+          }else{
+            dateParts.push(`截止 <b>${c.dueDay}</b> 號`);
+          }
+        }else{
+          dateParts.push(`截止 <b>${c.dueDay}</b> 號`);
+        }
+      }
+      if(c.balance) dateParts.push(`<span class="balance-val">剩餘 ${c.balance}</span>`);
+      if(c.expiry){
+        const days = daysUntil(c.expiry);
+        let cls = '';
+        if(days!==null){
+          if(days<0) cls='expiry-bad';
+          else if(days<=14) cls='expiry-warn';
+        }
+        const expiryText = days===null ? `期限 <b>${c.expiry}</b>`
+          : days<0 ? `⚠️ 期限 <b>${c.expiry}</b>（已過期）`
+          : days<=14 ? `⚠️ 期限 <b>${c.expiry}</b>（剩 ${days} 天）`
+          : `期限 <b>${c.expiry}</b>`;
+        dateParts.push(cls ? `<span class="${cls}">${expiryText}</span>` : expiryText);
+      }
+      const dateLine = dateParts.length ? `<span class="card-dates">${dateParts.join('　')}</span>` : '';
+      const typeBadge = (c.type && c.type!=='信用卡') ? `<span class="type-badge">${c.type}</span>` : '';
+      const hasQty = isOtherType(c);
+      const qtyNumStr = hasQty ? (parseBalanceNum(c.balance) || '0') : null;
+      const actionHtml = hasQty
+        ? `<div class="qty-ctrl"><button class="qty-num">${qtyNumStr}</button></div>`
+        : `<button class="state-btn state-${state}">${stateLabel}</button>`;
+      row.innerHTML = `
+        <div class="mark-btns">
+          <button class="fav-btn ${c.fav?'is-fav':''}">${c.fav?'★':'☆'}</button>
+          ${hasQty ? '' : `<button class="recurring-btn ${c.recurring?'is-recurring':''}" title="固定每月要繳費">🔁</button>`}
+        </div>
+        <div class="card-main">
+          <span class="card-name">${c.name}</span>${typeBadge}
+          ${dateLine}
+        </div>
+        ${actionHtml}
+        <button class="del-btn">✕</button>
+      `;
+      row.querySelector('.fav-btn').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        c.fav = !c.fav;
+        saveCards();
+        render();
+      });
+      if(!hasQty){
+        row.querySelector('.recurring-btn').addEventListener('click', (e)=>{
+          e.stopPropagation();
+          c.recurring = !c.recurring;
+          saveCards();
+          render();
+        });
+      }
+      if(hasQty){
+        row.querySelector('.qty-num').addEventListener('click', ()=>{
+          const input = prompt('剩餘數量', qtyNumStr);
+          if(input===null) return;
+          const n = parseFloat(input);
+          if(isNaN(n)){ alert('請輸入數字'); return; }
+          setBalanceNum(c, n);
+        });
+      }else{
+        row.querySelector('.state-btn').addEventListener('click', ()=>cycleState(c.id));
+      }
+      row.querySelector('.card-main').addEventListener('click', ()=>{
+        const name = prompt('卡片名稱', c.name);
+        if(name===null) return;
+        if(!name.trim()){ alert('名稱不能空白'); return; }
+        const bank = prompt(currentView==='other' ? '業者（用來分組，留空清除）' : '銀行（用來分組，留空清除）', c.bank || '');
+        if(bank===null) return;
+        c.name = name.trim();
+        c.bank = bank.trim() || undefined;
+
+        if(currentView==='other'){
+          const type = prompt('類型（行動支付／集點／其他，留空預設其他）', c.type || '其他');
+          if(type===null) return;
+          const balance = prompt('剩餘可用額度/點數（例如 500點、$1200，留空清除）', c.balance || '');
+          if(balance===null) return;
+          const expiry = prompt('使用期限（例如 2026-12-31，留空清除）', c.expiry || '');
+          if(expiry===null) return;
+          c.type = type.trim() || '其他';
+          c.balance = balance.trim() || undefined;
+          c.expiry = expiry.trim() || undefined;
+        }else{
+          const bill = prompt('結帳日（1-31，留空清除）', c.billDay || '');
+          if(bill===null) return;
+          const due = prompt('繳費截止日（1-31，留空清除）', c.dueDay || '');
+          if(due===null) return;
+          const b = parseInt(bill,10), d = parseInt(due,10);
+          c.type = undefined;
+          c.billDay = (b>=1 && b<=31) ? b : undefined;
+          c.dueDay = (d>=1 && d<=31) ? d : undefined;
+        }
+        saveCards();
+        render();
+      });
+      row.querySelector('.del-btn').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(!confirm(`確定要刪除「${c.name}」這張卡片嗎？`)) return;
+        cards = cards.filter(x=>x.id!==c.id);
+        Object.keys(records).forEach(mk=>{ delete records[mk][c.id]; });
+        saveCards();
+        saveRecords();
+        render();
+      });
+      list.appendChild(row);
+    }
+
+    function renderGroupLabel(key, label, count){
+      const isCollapsed = collapsedBanks.includes(key);
+      const el = document.createElement('div');
+      el.className = 'group-label' + (isCollapsed ? ' collapsed' : '');
+      el.innerHTML = `<span class="arrow">▾</span>${label}（${count}）`;
+      el.addEventListener('click', ()=>{
+        if(collapsedBanks.includes(key)) collapsedBanks = collapsedBanks.filter(b=>b!==key);
+        else collapsedBanks.push(key);
+        saveCollapsed();
+        render();
+      });
+      list.appendChild(el);
+      return isCollapsed;
+    }
+
+    const dayOrNone = d => (d>=1 && d<=31) ? d : 99;
+    const byDayThenName = (a,b) => {
+      const billDiff = dayOrNone(a.billDay) - dayOrNone(b.billDay);
+      if(billDiff) return billDiff;
+      const dueDiff = dayOrNone(a.dueDay) - dayOrNone(b.dueDay);
+      if(dueDiff) return dueDiff;
+      return a.name.localeCompare(b.name, 'zh-Hant');
+    };
+    const favCards = viewCards.filter(c=>c.fav).sort(byDayThenName);
+    // 這個月有使用/已繳的卡片，不管有沒有標常用，都另外置頂顯示，不用往下找
+    const activeCards = viewCards.filter(c=>getState(c.id)!=='none').sort(byDayThenName);
+    const restCards = viewCards.filter(c=>!c.fav && getState(c.id)==='none');
+
+    if(activeCards.length){
+      const collapsed = renderGroupLabel('__active__', '🔥 本月使用中', activeCards.length);
+      if(!collapsed) activeCards.forEach(renderCardRow);
+    }
+    if(favCards.length){
+      const collapsed = renderGroupLabel('__fav__', '★ 常用', favCards.length);
+      if(!collapsed) favCards.forEach(renderCardRow);
+    }
+
+    // 依「銀行/業者」分組，同一組排在一起，組內維持新增順序；沒填業者的改用「類型」分組，都沒填的才歸類成「未分類」
+    const NO_BANK = '未分類';
+    const groupKey = c => c.bank ? c.bank.trim() : (c.type ? c.type.trim() : NO_BANK);
+    const groupOrder = [];
+    const groups = {};
+    restCards.forEach(c=>{
+      const k = groupKey(c);
+      if(!groups[k]){ groups[k]=[]; groupOrder.push(k); }
+      groups[k].push(c);
+    });
+    // 有填的組別依「結帳日」數字小到大排序，同結帳日再依名稱排；「其他」排倒數第二，「未分類」排最後
+    const groupMinDay = (k, field) => {
+      const days = groups[k].map(c=>c[field]).filter(d=>d>=1 && d<=31);
+      return days.length ? Math.min(...days) : 99;
+    };
+    const groupRank = k => k===NO_BANK ? 2 : k==='其他' ? 1 : 0;
+    groupOrder.sort((a,b)=>{
+      const rankDiff = groupRank(a) - groupRank(b);
+      if(rankDiff) return rankDiff;
+      if(groupRank(a) > 0) return 0; // 其他/未分類彼此之間不用再比
+      const billDiff = groupMinDay(a,'billDay') - groupMinDay(b,'billDay');
+      if(billDiff) return billDiff;
+      const dueDiff = groupMinDay(a,'dueDay') - groupMinDay(b,'dueDay');
+      if(dueDiff) return dueDiff;
+      return a.localeCompare(b, 'zh-Hant');
+    });
+    groupOrder.forEach(k=>{
+      const collapsed = renderGroupLabel(k, k, groups[k].length);
+      if(!collapsed) groups[k].forEach(renderCardRow);
+    });
+  }
+
+  if(!viewCards.length){
+    document.getElementById('summary').innerHTML = '';
+  }else if(currentView==='other'){
+    const withExpiry = viewCards
+      .map(c=>({card:c, days:c.expiry ? daysUntil(c.expiry) : null}))
+      .filter(x=>x.days!==null)
+      .sort((a,b)=>a.days-b.days);
+    if(!withExpiry.length){
+      document.getElementById('summary').innerHTML = `共 ${viewCards.length} 項　｜　沒有設定到期日的提醒`;
+    }else{
+      const nearest = withExpiry[0];
+      const warn = nearest.days<=14;
+      const dayText = nearest.days<0 ? `已過期 ${-nearest.days} 天` : `剩 ${nearest.days} 天`;
+      document.getElementById('summary').innerHTML =
+        `共 ${viewCards.length} 項　｜　最近到期：<b${warn?' style="color:#F59E0B"':''}>${nearest.card.name} ${nearest.card.expiry}（${dayText}）</b>`;
+    }
+  }else{
+    const usedCount = viewCards.filter(c=>getState(c.id)==='used').length;
+    const paidCount = viewCards.filter(c=>getState(c.id)==='paid').length;
+    document.getElementById('summary').innerHTML =
+      `共 ${viewCards.length} 張　｜　這個月：<b>${usedCount}</b> 張待繳　${paidCount} 張已繳`;
+  }
+}
+
+// ── 提醒清單 ──────────────────────────────────────────
+const PERIOD_LABELS = {month:'每月', quarter:'每季', halfyear:'每半年', year:'每年'};
+function quarterKey(y, m){ return `${y}-Q${Math.floor(m/3)+1}`; }
+function halfYearKey(y, m){ return `${y}-H${m<6?1:2}`; }
+function taskPeriodKey(task){
+  if(task.period==='year') return String(curYear);
+  if(task.period==='quarter') return quarterKey(curYear, curMonth);
+  if(task.period==='halfyear') return halfYearKey(curYear, curMonth);
+  return monthKey(curYear, curMonth);
+}
+function isTaskDone(task){
+  const pk = taskPeriodKey(task);
+  return !!(taskDone[task.id] && taskDone[task.id][pk]);
+}
+const TASK_DUE_THRESHOLD = {month:7, quarter:14, halfyear:14, year:14};
+// 算出「目前這期」還剩幾天結束（只在瀏覽的月份就是真實的當下月份時才有意義）
+function taskPeriodDaysLeft(task){
+  const isCurMonth = curYear===today.getFullYear() && curMonth===today.getMonth();
+  if(!isCurMonth) return null;
+  const y = curYear;
+  let endMonth; // 0-based，該週期最後一個月
+  if(task.period==='month') endMonth = curMonth;
+  else if(task.period==='quarter') endMonth = Math.floor(curMonth/3)*3 + 2;
+  else if(task.period==='halfyear') endMonth = curMonth<6 ? 5 : 11;
+  else if(task.period==='year') endMonth = 11;
+  else return null;
+  const end = new Date(y, endMonth+1, 0); // 該月最後一天
+  const t = new Date(); t.setHours(0,0,0,0);
+  const days = Math.round((end - t) / 86400000);
+  return days<=TASK_DUE_THRESHOLD[task.period] ? days : null;
+}
+function toggleTaskDone(task){
+  const pk = taskPeriodKey(task);
+  if(!taskDone[task.id]) taskDone[task.id] = {};
+  if(taskDone[task.id][pk]) delete taskDone[task.id][pk];
+  else taskDone[task.id][pk] = true;
+  saveTaskDone();
+  render();
+}
+function renderChecklist(){
+  const list = document.getElementById('checklist-list');
+  list.innerHTML = '';
+  if(!tasks.length){
+    list.innerHTML = '<div class="empty-msg">還沒有提醒項目，先在下面新增一個吧</div>';
+    document.getElementById('checklist-summary').innerHTML = '';
+    return;
+  }
+
+  function renderTaskRow(t){
+    const done = isTaskDone(t);
+    const daysLeft = done ? null : taskPeriodDaysLeft(t);
+    const dueWarn = daysLeft!==null
+      ? `　<span class="expiry-warn">⚠️ 剩 ${daysLeft} 天</span>`
+      : '';
+    const row = document.createElement('div'); row.className='task-row';
+    row.innerHTML = `
+      <button class="task-check ${done?'done':''}">${done?'✓':''}</button>
+      <div class="task-main">
+        <div class="task-name ${done?'done':''}">${t.name}</div>
+        <div class="task-period">${PERIOD_LABELS[t.period] || '每月'}${dueWarn}</div>
+      </div>
+      <button class="del-btn">✕</button>
+    `;
+    row.querySelector('.task-check').addEventListener('click', ()=>toggleTaskDone(t));
+    row.querySelector('.task-name').addEventListener('click', ()=>toggleTaskDone(t));
+    row.querySelector('.del-btn').addEventListener('click', ()=>{
+      if(!confirm(`確定要刪除「${t.name}」這個提醒項目嗎？`)) return;
+      tasks = tasks.filter(x=>x.id!==t.id);
+      delete taskDone[t.id];
+      saveTasks(); saveTaskDone();
+      render();
+    });
+    list.appendChild(row);
+  }
+
+  const PERIOD_ORDER = ['month','quarter','halfyear','year'];
+  function renderByPeriod(taskList){
+    PERIOD_ORDER.forEach(p=>{
+      const group = taskList.filter(t=>t.period===p);
+      if(!group.length) return;
+      const sub = document.createElement('div');
+      sub.className = 'm-sub-label';
+      sub.textContent = PERIOD_LABELS[p];
+      list.appendChild(sub);
+      group.forEach(renderTaskRow);
+    });
+  }
+
+  const pending = tasks.filter(t=>!isTaskDone(t));
+  const done = tasks.filter(t=>isTaskDone(t));
+
+  if(!pending.length && !done.length){
+    list.innerHTML = '<div class="empty-msg">還沒有提醒項目，先在下面新增一個吧</div>';
+  }else{
+    if(pending.length){
+      renderByPeriod(pending);
+    }else{
+      list.innerHTML += '<div class="task-section-label">🎉 這期間的項目都完成了</div>';
+    }
+    if(done.length){
+      const label = document.createElement('div');
+      label.className = 'task-section-label';
+      label.textContent = `已完成（${done.length}）`;
+      list.appendChild(label);
+      renderByPeriod(done);
+    }
+  }
+
+  document.getElementById('checklist-summary').innerHTML =
+    `共 ${tasks.length} 項　｜　這期間：<b>${pending.length}</b> 項未完成　${done.length} 項已完成`;
+}
+
+// ── 事件 ──────────────────────────────────────────────
+document.getElementById('view-card-btn').addEventListener('click', ()=>{
+  currentView = 'card'; saveView(); render();
+});
+document.getElementById('view-other-btn').addEventListener('click', ()=>{
+  currentView = 'other'; saveView(); render();
+});
+document.getElementById('view-checklist-btn').addEventListener('click', ()=>{
+  currentView = 'checklist'; saveView(); render();
+});
+document.getElementById('prev').addEventListener('click', ()=>{
+  curMonth--; if(curMonth<0){curMonth=11; curYear--;}
+  render();
+});
+document.getElementById('next').addEventListener('click', ()=>{
+  curMonth++; if(curMonth>11){curMonth=0; curYear++;}
+  render();
+});
+document.getElementById('today-btn').addEventListener('click', ()=>{
+  curYear = today.getFullYear(); curMonth = today.getMonth();
+  render();
+});
+document.getElementById('add-card-btn').addEventListener('click', ()=>{
+  const inp = document.getElementById('card-input');
+  const bankInp = document.getElementById('bank-input');
+  const val = inp.value.trim();
+  if(!val) return;
+  const bank = bankInp.value.trim() || guessBank(val);
+  const card = {id:nextId++, name:val};
+  if(bank) card.bank = bank;
+
+  if(currentView==='other'){
+    card.type = '其他';
+    const balanceInp = document.getElementById('balance-input');
+    const expiryInp = document.getElementById('expiry-input');
+    if(balanceInp.value.trim()) card.balance = balanceInp.value.trim();
+    if(expiryInp.value) card.expiry = expiryInp.value;
+    balanceInp.value=''; expiryInp.value='';
+  }else{
+    const billInp = document.getElementById('bill-day-input');
+    const dueInp = document.getElementById('due-day-input');
+    const b = parseInt(billInp.value,10), d = parseInt(dueInp.value,10);
+    if(b>=1 && b<=31) card.billDay = b;
+    if(d>=1 && d<=31) card.dueDay = d;
+  }
+
+  cards.push(card);
+  saveCards();
+  inp.value=''; inp.focus();
+  render();
+});
+document.getElementById('card-input').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('add-card-btn').click();
+});
+
+// ── 提醒清單新增 ──────────────────────────────────────
+document.getElementById('add-task-btn').addEventListener('click', ()=>{
+  const inp = document.getElementById('task-input');
+  const periodInp = document.getElementById('task-period-input');
+  const val = inp.value.trim();
+  if(!val) return;
+  tasks.push({id:nextTaskId++, name:val, period:periodInp.value});
+  saveTasks();
+  inp.value=''; inp.focus();
+  render();
+});
+document.getElementById('task-input').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('add-task-btn').click();
+});
+
+// ── 年度總覽 ──────────────────────────────────────────
+document.getElementById('yearly-btn').addEventListener('click', ()=>{
+  const y = curYear;
+  const cardMap = {}; cards.forEach(c=>cardMap[c.id]=c);
+  let body = '';
+
+  const yearTasks = tasks.filter(t=>t.period==='year');
+  if(yearTasks.length){
+    body += `<div class="year-block"><div class="m-title">📌 ${y} 年度提醒</div>`;
+    yearTasks.forEach(t=>{
+      const done = !!(taskDone[t.id] && taskDone[t.id][String(y)]);
+      body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+    });
+    body += `</div>`;
+  }
+
+  const halfTasks = tasks.filter(t=>t.period==='halfyear');
+  if(halfTasks.length){
+    body += `<div class="year-block"><div class="m-title">📌 ${y} 每半年提醒</div>`;
+    [1,2].forEach(h=>{
+      const pk = `${y}-H${h}`;
+      body += `<div class="m-sub-label">${h===1?'上半年':'下半年'}</div>`;
+      halfTasks.forEach(t=>{
+        const done = !!(taskDone[t.id] && taskDone[t.id][pk]);
+        body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+      });
+    });
+    body += `</div>`;
+  }
+
+  const quarterTasks = tasks.filter(t=>t.period==='quarter');
+  if(quarterTasks.length){
+    body += `<div class="year-block"><div class="m-title">📌 ${y} 每季提醒</div>`;
+    [1,2,3,4].forEach(q=>{
+      const pk = `${y}-Q${q}`;
+      body += `<div class="m-sub-label">第${q}季</div>`;
+      quarterTasks.forEach(t=>{
+        const done = !!(taskDone[t.id] && taskDone[t.id][pk]);
+        body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+      });
+    });
+    body += `</div>`;
+  }
+
+  for(let m=0; m<12; m++){
+    const mk = monthKey(y, m);
+    const rec = records[mk] || {};
+    const items = Object.keys(rec)
+      .map(id=>{ const e = getEntry(mk, id); return {card:cardMap[id], state:e.state, amt:e.amt}; })
+      .filter(x=>x.card); // 忽略已刪除的卡片
+    const monthTasks = tasks.filter(t=>t.period==='month');
+    const isThisMonth = y===today.getFullYear() && m===today.getMonth();
+    const monthTitle = isThisMonth ? `${m+1} 月　<span class="this-month-tag">本月</span>` : `${m+1} 月`;
+    body += `<div class="year-block${isThisMonth?' this-month':''}"><div class="m-title">${monthTitle}</div>`;
+    if(!items.length && !monthTasks.length){
+      body += `<div class="m-empty">沒有使用紀錄</div>`;
+    }else{
+      body += `<div class="m-sub-label">💳 信用卡</div>`;
+      if(!items.length){
+        body += `<div class="m-empty">沒有使用紀錄</div>`;
+      }else{
+        let monthTotal = 0;
+        items.forEach(x=>{
+          const label = x.state==='paid' ? (x.amt ? `✓ 已繳 $${x.amt.toLocaleString()}` : '✓ 已繳') : '待繳';
+          if(x.state==='paid' && x.amt) monthTotal += x.amt;
+          body += `<div class="m-item"><span class="dot ${x.state}"></span>${x.card.name}（${label}）</div>`;
+        });
+        if(monthTotal) body += `<div class="m-item" style="color:var(--tx2);font-weight:600">合計：$${monthTotal.toLocaleString()}</div>`;
+      }
+      if(monthTasks.length){
+        body += `<div class="m-sub-label">📌 提醒</div>`;
+        monthTasks.forEach(t=>{
+          const done = !!(taskDone[t.id] && taskDone[t.id][mk]);
+          body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+        });
+      }
+    }
+    body += `</div>`;
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head"><h2>${y} 年度使用總覽</h2><button class="modal-close">✕</button></div>
+      ${body}
+    </div>
+  `;
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('.modal-close').addEventListener('click', ()=>overlay.remove());
+  document.body.appendChild(overlay);
+});
+
+// ── 重置本月 ──────────────────────────────────────────
+document.getElementById('reset-btn').addEventListener('click', ()=>{
+  const mk = monthKey(curYear, curMonth);
+  if(currentView==='checklist'){
+    const monthTaskIds = tasks.filter(t=>t.period==='month').map(t=>t.id);
+    const hasAny = monthTaskIds.some(id=>taskDone[id] && taskDone[id][mk]);
+    if(!hasAny){ alert('這個月目前沒有任何已完成的每月提醒'); return; }
+    if(!confirm(`確定要把 ${curYear} 年 ${curMonth+1} 月的每月提醒全部重置成「未完成」嗎？（每年提醒不受影響）`)) return;
+    monthTaskIds.forEach(id=>{ if(taskDone[id]) delete taskDone[id][mk]; });
+    saveTaskDone();
+    render();
+    return;
+  }
+  if(!records[mk] || !Object.keys(records[mk]).length){ alert('這個月目前沒有任何紀錄'); return; }
+  const recurringCards = cards.filter(c=>c.recurring);
+  const recurringNote = recurringCards.length ? `\n\n「🔁 固定每月」的 ${recurringCards.length} 張卡會自動變回「已使用待繳」。` : '';
+  if(!confirm(`確定要把 ${curYear} 年 ${curMonth+1} 月所有卡片重置成「未使用」嗎？${recurringNote}`)) return;
+  delete records[mk];
+  if(recurringCards.length){
+    records[mk] = {};
+    recurringCards.forEach(c=>{ records[mk][c.id] = {state:'used'}; });
+  }
+  saveRecords();
+  render();
+});
+
+// ── 自動判斷銀行（批次補上舊卡片）────────────────────
+document.getElementById('guess-bank-btn').addEventListener('click', ()=>{
+  let filled = 0, unmatched = [];
+  cards.forEach(c=>{
+    if(c.bank) return; // 已經有銀行的不動
+    const g = guessBank(c.name);
+    if(g){ c.bank = g; filled++; } else unmatched.push(c.name);
+  });
+  if(!filled && !unmatched.length){ alert('所有卡片都已經有銀行分類了'); return; }
+  saveCards();
+  render();
+  let msg = `已自動判斷並填入 ${filled} 張卡片的銀行`;
+  if(unmatched.length) msg += `\n\n無法判斷（請手動點卡片補上）：\n${unmatched.join('、')}`;
+  alert(msg);
+});
+
+// ── 匯出備份 ──────────────────────────────────────────
+document.getElementById('export-btn').addEventListener('click', ()=>{
+  const data = { cards, records, tasks, taskDone, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `曼巴信用卡繳費_備份_${ts}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// ── 匯入備份 ──────────────────────────────────────────
+document.getElementById('import-btn').addEventListener('click', ()=>{
+  document.getElementById('import-file').click();
+});
+document.getElementById('import-file').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(!Array.isArray(data.cards) || typeof data.records !== 'object') throw new Error('格式錯誤');
+      if(!confirm('匯入將會覆蓋目前所有卡片與紀錄，確定嗎？')) return;
+      cards = data.cards;
+      records = data.records;
+      tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      taskDone = (data.taskDone && typeof data.taskDone==='object') ? data.taskDone : {};
+      nextId = cards.reduce((m,c)=>Math.max(m,c.id),0)+1;
+      nextTaskId = tasks.reduce((m,t)=>Math.max(m,t.id),0)+1;
+      saveCards(); saveRecords(); saveTasks(); saveTaskDone();
+      render();
+      alert('匯入完成');
+    }catch(err){
+      alert('匯入失敗：檔案格式不正確');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+// ── 雲端同步 ──────────────────────────────────────────
+function saveSyncCode(){ try{ localStorage.setItem('cardpay_synccode', syncCode); }catch(e){} }
+
+document.getElementById('sync-btn').addEventListener('click', ()=>{
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-head"><h2>☁️ 雲端同步</h2><button class="modal-close">✕</button></div>
+      <div class="add-dates" style="margin-top:0">
+        <label>同步代碼（手機/電腦輸入同一組即可互通，自己取一組不容易跟別人重複的）
+          <input type="text" id="sync-code-input" placeholder="例如 mamba-cardpay-0917" value="${syncCode ? syncCode.replace(/"/g,'&quot;') : ''}"/>
+        </label>
+      </div>
+      <div class="tool-bar" style="margin:14px 0 6px">
+        <button class="tool-btn" id="sync-push-btn">⬆️ 上傳到雲端</button>
+        <button class="tool-btn" id="sync-pull-btn">⬇️ 從雲端下載</button>
+      </div>
+      <div class="m-empty" id="sync-status" style="text-align:center;padding:4px 0"></div>
+    </div>
+  `;
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('.modal-close').addEventListener('click', ()=>overlay.remove());
+  document.body.appendChild(overlay);
+
+  const codeInp = overlay.querySelector('#sync-code-input');
+  const statusEl = overlay.querySelector('#sync-status');
+  const setStatus = (text) => { statusEl.textContent = text; };
+
+  overlay.querySelector('#sync-push-btn').addEventListener('click', async ()=>{
+    const code = codeInp.value.trim();
+    if(!code){ alert('請先輸入同步代碼'); return; }
+    syncCode = code; saveSyncCode();
+    setStatus('上傳中…');
+    try{
+      const res = await fetch(`${SYNC_API}/api/data/push`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ syncCode, cards, records, tasks, taskDone, collapsedBanks, updatedAt: Date.now() })
+      });
+      const json = await res.json();
+      if(!res.ok || json.error) throw new Error(json.error || '上傳失敗');
+      setStatus(`✓ 已上傳（${new Date().toLocaleTimeString('zh-TW')}）`);
+    }catch(err){
+      setStatus(`✕ 上傳失敗：${err.message}`);
+    }
+  });
+
+  overlay.querySelector('#sync-pull-btn').addEventListener('click', async ()=>{
+    const code = codeInp.value.trim();
+    if(!code){ alert('請先輸入同步代碼'); return; }
+    syncCode = code; saveSyncCode();
+    setStatus('下載中…');
+    try{
+      const res = await fetch(`${SYNC_API}/api/data/pull`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ syncCode })
+      });
+      const json = await res.json();
+      if(!res.ok || json.error) throw new Error(json.error || '下載失敗');
+      if(!json.data){ setStatus('雲端目前沒有這組代碼的資料'); return; }
+      if(!confirm('從雲端下載將會覆蓋目前本機的所有卡片、紀錄與提醒清單，確定嗎？')) { setStatus(''); return; }
+      const data = json.data;
+      cards = Array.isArray(data.cards) ? data.cards : [];
+      records = (data.records && typeof data.records==='object') ? data.records : {};
+      tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      taskDone = (data.taskDone && typeof data.taskDone==='object') ? data.taskDone : {};
+      collapsedBanks = Array.isArray(data.collapsedBanks) ? data.collapsedBanks : [];
+      nextId = cards.reduce((m,c)=>Math.max(m,c.id),0)+1;
+      nextTaskId = tasks.reduce((m,t)=>Math.max(m,t.id),0)+1;
+      saveCards(); saveRecords(); saveTasks(); saveTaskDone(); saveCollapsed();
+      render();
+      setStatus(`✓ 已下載並套用（${new Date().toLocaleTimeString('zh-TW')}）`);
+    }catch(err){
+      setStatus(`✕ 下載失敗：${err.message}`);
+    }
+  });
+});
+
+// ── 初始化 ────────────────────────────────────────────
+loadData();
+render();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
