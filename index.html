@@ -255,13 +255,18 @@ function daysUntil(dateStr){
   const t = new Date(); t.setHours(0,0,0,0);
   return Math.round((d - t) / 86400000);
 }
-// 算出「這期」最近一次的繳費截止日還剩幾天（依真實今天的日期算，不是目前瀏覽的月份）
-function daysUntilDueDay(dueDay){
-  if(!(dueDay>=1 && dueDay<=31)) return null;
-  const t = new Date(); t.setHours(0,0,0,0);
-  let target = new Date(t.getFullYear(), t.getMonth(), dueDay);
-  if(target < t) target = new Date(t.getFullYear(), t.getMonth()+1, dueDay);
-  return Math.round((target - t) / 86400000);
+// 算出某筆「已使用待繳」紀錄實際對應的繳費截止日：紀錄記在哪個月（mk），
+// 就以那個月的結帳日為基準算——結帳日晚於截止日代表跨月（下個月才到期），
+// 這樣同一張卡這個月新用的一筆，才不會誤配到上個月已經繳掉那期的截止日。
+function dueDateForRecord(c, mk){
+  if(!(c.dueDay>=1 && c.dueDay<=31)) return null;
+  const [y, m] = mk.split('-').map(Number); // m 是 1-based
+  let dueMonth = m - 1, dueYear = y;
+  if(c.billDay && c.dueDay<=c.billDay){
+    dueMonth += 1;
+    if(dueMonth>11){ dueMonth = 0; dueYear += 1; }
+  }
+  return new Date(dueYear, dueMonth, c.dueDay);
 }
 
 // ── 月份狀態 ──────────────────────────────────────────
@@ -365,8 +370,9 @@ function render(){
       : '<div class="empty-msg">還沒有卡片，先在下面新增一張吧</div>';
   }else{
     function renderCardRow(c){
-      const state = getState(c.id);
-      const amt = getAmount(c.id);
+      const eff = getEffective(c.id);
+      const state = eff.entry.state;
+      const amt = eff.entry.amt;
       const row = document.createElement('div'); row.className='card-row';
       const stateLabel = state==='none' ? '未使用' : state==='used' ? '已使用待繳' : (amt ? `✓ 已繳 $${amt.toLocaleString()}` : '✓ 已繳');
       const dateParts = [];
@@ -375,7 +381,9 @@ function render(){
       if(c.dueDay){
         if(!hideBd) dateParts.push(`截止 <b>${c.dueDay}</b> 號`);
         if(state==='used'){
-          const dueDays = daysUntilDueDay(c.dueDay);
+          const dueDate = dueDateForRecord(c, eff.mk);
+          const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+          const dueDays = dueDate ? Math.round((dueDate - todayMidnight) / 86400000) : null;
           if(dueDays!==null && dueDays<=7){
             warnParts.push(`<span class="expiry-warn">⚠️（剩 ${dueDays} 天）</span>`);
           }
