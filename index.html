@@ -83,7 +83,7 @@
   .tool-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
   .tool-btn{flex:1 1 0;min-width:0;background:none;border:1.5px solid var(--bd);border-radius:12px;padding:8px 6px;font-size:11.5px;font-weight:600;color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tool-btn:active{background:var(--card)}
-  .group-label{align-self:flex-start;font-size:13.5px;color:var(--tx);font-weight:800;margin:14px 0 8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none;background:var(--bg2);border-radius:8px;padding:6px 12px}
+  .group-label{align-self:flex-start;font-size:13.5px;color:#B7AEFF;font-weight:800;margin:14px 0 8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none;background:var(--bg2);border-radius:8px;padding:6px 12px}
   .group-label:first-child{margin-top:0}
   .group-label .arrow{font-size:9px;transition:transform .15s}
   .group-label.collapsed .arrow{transform:rotate(-90deg)}
@@ -338,34 +338,28 @@ function render(){
       const row = document.createElement('div'); row.className='card-row';
       const stateLabel = state==='none' ? '未使用' : state==='used' ? '已使用待繳' : (amt ? `✓ 已繳 $${amt.toLocaleString()}` : '✓ 已繳');
       const dateParts = [];
+      const warnParts = [];
       if(c.billDay) dateParts.push(`結帳 <b>${c.billDay}</b> 號`);
       if(c.dueDay){
+        dateParts.push(`截止 <b>${c.dueDay}</b> 號`);
         if(state==='used'){
           const dueDays = daysUntilDueDay(c.dueDay);
           if(dueDays!==null && dueDays<=7){
-            dateParts.push(`<span class="expiry-warn">⚠️ 截止 <b>${c.dueDay}</b> 號（剩 ${dueDays} 天）</span>`);
-          }else{
-            dateParts.push(`截止 <b>${c.dueDay}</b> 號`);
+            warnParts.push(`<span class="expiry-warn">⚠️（剩 ${dueDays} 天）</span>`);
           }
-        }else{
-          dateParts.push(`截止 <b>${c.dueDay}</b> 號`);
         }
       }
       if(c.balance) dateParts.push(`<span class="balance-val">剩餘 ${c.balance}</span>`);
       if(c.expiry){
         const days = daysUntil(c.expiry);
-        let cls = '';
+        dateParts.push(`期限 <b>${c.expiry}</b>`);
         if(days!==null){
-          if(days<0) cls='expiry-bad';
-          else if(days<=14) cls='expiry-warn';
+          if(days<0) warnParts.push(`<span class="expiry-bad">⚠️（已過期 ${-days} 天）</span>`);
+          else if(days<=14) warnParts.push(`<span class="expiry-warn">⚠️（剩 ${days} 天）</span>`);
         }
-        const expiryText = days===null ? `期限 <b>${c.expiry}</b>`
-          : days<0 ? `⚠️ 期限 <b>${c.expiry}</b>（已過期）`
-          : days<=14 ? `⚠️ 期限 <b>${c.expiry}</b>（剩 ${days} 天）`
-          : `期限 <b>${c.expiry}</b>`;
-        dateParts.push(cls ? `<span class="${cls}">${expiryText}</span>` : expiryText);
       }
       const dateLine = dateParts.length ? `<span class="card-dates">${dateParts.join('　')}</span>` : '';
+      const warnLine = warnParts.length ? `<span class="card-dates">${warnParts.join('　')}</span>` : '';
       const typeBadge = (c.type && c.type!=='信用卡') ? `<span class="type-badge">${c.type}</span>` : '';
       const hasQty = isOtherType(c);
       const qtyNumStr = hasQty ? (parseBalanceNum(c.balance) || '0') : null;
@@ -380,6 +374,7 @@ function render(){
         <div class="card-main">
           <span class="card-name">${c.name}</span>${typeBadge}
           ${dateLine}
+          ${warnLine}
         </div>
         ${actionHtml}
         <button class="del-btn">✕</button>
@@ -598,14 +593,15 @@ function renderChecklist(){
     const done = isTaskDone(t);
     const daysLeft = done ? null : taskPeriodDaysLeft(t);
     const dueWarn = daysLeft!==null
-      ? `　<span class="expiry-warn">⚠️ 剩 ${daysLeft} 天</span>`
+      ? `<div class="task-period expiry-warn">⚠️（剩 ${daysLeft} 天）</div>`
       : '';
     const row = document.createElement('div'); row.className='task-row';
     row.innerHTML = `
       <button class="task-check ${done?'done':''}">${done?'✓':''}</button>
       <div class="task-main">
         <div class="task-name ${done?'done':''}">${t.name}</div>
-        <div class="task-period">${PERIOD_LABELS[t.period] || '每月'}${dueWarn}</div>
+        <div class="task-period">${PERIOD_LABELS[t.period] || '每月'}</div>
+        ${dueWarn}
       </div>
       <button class="del-btn">✕</button>
     `;
