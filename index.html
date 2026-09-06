@@ -27,7 +27,7 @@
   .summary{font-size:13px;color:var(--tx2);text-align:center;margin-bottom:14px}
   .summary b{color:var(--used)}
   .card-list{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
-  .card-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:13px;padding:12px 14px}
+  .card-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:13px;padding:12px 14px;min-height:88px}
   .card-name{flex:1;font-size:16px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .state-btn{border:none;border-radius:11px;padding:6px 10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;min-width:84px;transition:opacity .15s}
   .state-btn:active{opacity:.7}
@@ -56,6 +56,7 @@
   .dot.paid{background:var(--paid)}
   .card-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   .card-dates{font-size:12.5px;color:var(--tx2)}
+  .card-dates.lg{font-size:14px}
   .card-dates b{color:var(--tx);font-weight:700}
   .card-dates .balance-val{color:#4FC3E0;font-weight:700}
   .expiry-warn{color:var(--used);font-weight:600}
@@ -72,7 +73,7 @@
   .add-dates label{flex:1;font-size:12px;color:var(--tx2);display:flex;flex-direction:column;gap:4px}
   .add-dates input,.add-dates select{font-size:14px;padding:9px 10px;border:1.5px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);outline:none;width:100%}
   .add-dates input:focus,.add-dates select:focus{border-color:var(--accent)}
-  .task-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:13px;padding:12px 14px;margin-bottom:10px}
+  .task-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:13px;padding:12px 14px;margin-bottom:10px;min-height:88px}
   .task-check{flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--bd);background:none;cursor:pointer;color:var(--paid);font-size:14px;display:flex;align-items:center;justify-content:center}
   .task-check.done{background:var(--paid);border-color:var(--paid);color:#fff}
   .task-main{flex:1;min-width:0}
@@ -361,10 +362,11 @@ function render(){
           else if(days<=14) warnParts.push(`<span class="expiry-warn">⚠️（剩 ${days} 天）</span>`);
         }
       }
-      const dateLine = dateParts.length ? `<span class="card-dates">${dateParts.join('　')}</span>` : '';
-      const warnLine = warnParts.length ? `<span class="card-dates">${warnParts.join('　')}</span>` : '';
-      const typeBadge = (c.type && c.type!=='信用卡') ? `<span class="type-badge">${c.type}</span>` : '';
       const hasQty = isOtherType(c);
+      const datesCls = hasQty ? 'card-dates lg' : 'card-dates';
+      const dateLine = dateParts.length ? `<span class="${datesCls}">${dateParts.join('　')}</span>` : '';
+      const warnLine = warnParts.length ? `<span class="${datesCls}">${warnParts.join('　')}</span>` : '';
+      const typeBadge = (c.type && c.type!=='信用卡') ? `<span class="type-badge">${c.type}</span>` : '';
       const qtyNumStr = hasQty ? (parseBalanceNum(c.balance) || '0') : null;
       const actionHtml = hasQty
         ? `<div class="qty-ctrl"><button class="qty-num">${qtyNumStr}</button></div>`
