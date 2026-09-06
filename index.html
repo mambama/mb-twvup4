@@ -194,7 +194,8 @@ let taskDone = {};
 let nextTaskId = 1;
 
 // ── 雲端同步 ──────────────────────────────────────────
-const SYNC_API = 'https://cardpay-sync.dwmmamba.workers.dev';
+const DEFAULT_SYNC_API = 'https://cardpay-sync.dwmmamba.workers.dev';
+let syncApi = DEFAULT_SYNC_API; // 每個人可以填自己的 Worker 網址，不用共用同一個額度
 let syncCode = '';
 let hideBd = false; // 是否隱藏結帳日/截止日
 
@@ -206,6 +207,7 @@ function loadData(){
   try{ const r=localStorage.getItem('cardpay_collapsed'); if(r) collapsedBanks=JSON.parse(r); }catch(e){}
   try{ const r=localStorage.getItem('cardpay_view'); if(r==='card'||r==='other'||r==='checklist') currentView=r; }catch(e){}
   try{ const r=localStorage.getItem('cardpay_synccode'); if(r) syncCode=r; }catch(e){}
+  try{ const r=localStorage.getItem('cardpay_syncapi'); if(r) syncApi=r; }catch(e){}
   try{ const r=localStorage.getItem('cardpay_hidebd'); if(r==='1') hideBd=true; }catch(e){}
   nextId = cards.reduce((m,c)=>Math.max(m,c.id),0)+1;
   nextTaskId = tasks.reduce((m,t)=>Math.max(m,t.id),0)+1;
@@ -918,6 +920,7 @@ document.getElementById('import-file').addEventListener('change', (e)=>{
 
 // ── 雲端同步 ──────────────────────────────────────────
 function saveSyncCode(){ try{ localStorage.setItem('cardpay_synccode', syncCode); }catch(e){} }
+function saveSyncApi(){ try{ localStorage.setItem('cardpay_syncapi', syncApi); }catch(e){} }
 
 document.getElementById('sync-btn').addEventListener('click', ()=>{
   const overlay = document.createElement('div');
@@ -926,6 +929,9 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
     <div class="modal-box">
       <div class="modal-head"><h2>☁️ 雲端同步</h2><button class="modal-close">✕</button></div>
       <div class="add-dates" style="margin-top:0">
+        <label>Worker 網址（可以填自己架的 Cloudflare Worker，不用跟別人共用額度；留空用預設的）
+          <input type="text" id="sync-api-input" placeholder="${DEFAULT_SYNC_API}" value="${syncApi!==DEFAULT_SYNC_API ? syncApi.replace(/"/g,'&quot;') : ''}"/>
+        </label>
         <label>同步代碼（手機/電腦輸入同一組即可互通，自己取一組不容易跟別人重複的）
           <input type="text" id="sync-code-input" placeholder="例如 mamba-cardpay-0917" value="${syncCode ? syncCode.replace(/"/g,'&quot;') : ''}"/>
         </label>
@@ -941,17 +947,20 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
   overlay.querySelector('.modal-close').addEventListener('click', ()=>overlay.remove());
   document.body.appendChild(overlay);
 
+  const apiInp = overlay.querySelector('#sync-api-input');
   const codeInp = overlay.querySelector('#sync-code-input');
   const statusEl = overlay.querySelector('#sync-status');
   const setStatus = (text) => { statusEl.textContent = text; };
+  const resolveApi = () => (apiInp.value.trim().replace(/\/$/,'')) || DEFAULT_SYNC_API;
 
   overlay.querySelector('#sync-push-btn').addEventListener('click', async ()=>{
     const code = codeInp.value.trim();
     if(!code){ alert('請先輸入同步代碼'); return; }
     syncCode = code; saveSyncCode();
+    syncApi = resolveApi(); saveSyncApi();
     setStatus('上傳中…');
     try{
-      const res = await fetch(`${SYNC_API}/api/data/push`, {
+      const res = await fetch(`${syncApi}/api/data/push`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ syncCode, cards, records, tasks, taskDone, collapsedBanks, updatedAt: Date.now() })
@@ -968,9 +977,10 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
     const code = codeInp.value.trim();
     if(!code){ alert('請先輸入同步代碼'); return; }
     syncCode = code; saveSyncCode();
+    syncApi = resolveApi(); saveSyncApi();
     setStatus('下載中…');
     try{
-      const res = await fetch(`${SYNC_API}/api/data/pull`, {
+      const res = await fetch(`${syncApi}/api/data/pull`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ syncCode })
