@@ -930,7 +930,7 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
       <div class="modal-head"><h2>☁️ 雲端同步</h2><button class="modal-close">✕</button></div>
       <div class="add-dates" style="margin-top:0">
         <label>Worker 網址（可以填自己架的 Cloudflare Worker，不用跟別人共用額度；留空用預設的）
-          <input type="text" id="sync-api-input" placeholder="${DEFAULT_SYNC_API}" value="${syncApi!==DEFAULT_SYNC_API ? syncApi.replace(/"/g,'&quot;') : ''}"/>
+          <input type="text" id="sync-api-input" placeholder="留空使用預設" value="${syncApi!==DEFAULT_SYNC_API ? syncApi.replace(/"/g,'&quot;') : ''}"/>
         </label>
         <label>同步代碼（手機/電腦輸入同一組即可互通，自己取一組不容易跟別人重複的）
           <input type="text" id="sync-code-input" placeholder="例如 mamba-cardpay-0917" value="${syncCode ? syncCode.replace(/"/g,'&quot;') : ''}"/>
