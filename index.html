@@ -194,8 +194,7 @@ let taskDone = {};
 let nextTaskId = 1;
 
 // ── 雲端同步 ──────────────────────────────────────────
-const DEFAULT_SYNC_API = 'https://cardpay-sync.dwmmamba.workers.dev';
-let syncApi = DEFAULT_SYNC_API; // 每個人可以填自己的 Worker 網址，不用共用同一個額度
+let syncApi = ''; // 沒有預設值，每個人要自己填自己的 Cloudflare Worker 網址
 let syncCode = '';
 let hideBd = false; // 是否隱藏結帳日/截止日
 
@@ -929,8 +928,8 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
     <div class="modal-box">
       <div class="modal-head"><h2>☁️ 雲端同步</h2><button class="modal-close">✕</button></div>
       <div class="add-dates" style="margin-top:0">
-        <label>Worker 網址（可以填自己架的 Cloudflare Worker，不用跟別人共用額度；留空用預設的）
-          <input type="text" id="sync-api-input" placeholder="留空使用預設" value="${syncApi!==DEFAULT_SYNC_API ? syncApi.replace(/"/g,'&quot;') : ''}"/>
+        <label>Worker 網址（自己架的 Cloudflare Worker 網址，第一次要手動填一次，之後會記住）
+          <input type="text" id="sync-api-input" placeholder="例如 https://xxx.workers.dev" value="${syncApi ? syncApi.replace(/"/g,'&quot;') : ''}"/>
         </label>
         <label>同步代碼（手機/電腦輸入同一組即可互通，自己取一組不容易跟別人重複的）
           <input type="text" id="sync-code-input" placeholder="例如 mamba-cardpay-0917" value="${syncCode ? syncCode.replace(/"/g,'&quot;') : ''}"/>
@@ -951,13 +950,15 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
   const codeInp = overlay.querySelector('#sync-code-input');
   const statusEl = overlay.querySelector('#sync-status');
   const setStatus = (text) => { statusEl.textContent = text; };
-  const resolveApi = () => (apiInp.value.trim().replace(/\/$/,'')) || DEFAULT_SYNC_API;
+  const resolveApi = () => apiInp.value.trim().replace(/\/$/,'');
 
   overlay.querySelector('#sync-push-btn').addEventListener('click', async ()=>{
     const code = codeInp.value.trim();
     if(!code){ alert('請先輸入同步代碼'); return; }
+    const api = resolveApi();
+    if(!api){ alert('請先填寫 Worker 網址'); return; }
     syncCode = code; saveSyncCode();
-    syncApi = resolveApi(); saveSyncApi();
+    syncApi = api; saveSyncApi();
     setStatus('上傳中…');
     try{
       const res = await fetch(`${syncApi}/api/data/push`, {
@@ -976,8 +977,10 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
   overlay.querySelector('#sync-pull-btn').addEventListener('click', async ()=>{
     const code = codeInp.value.trim();
     if(!code){ alert('請先輸入同步代碼'); return; }
+    const api = resolveApi();
+    if(!api){ alert('請先填寫 Worker 網址'); return; }
     syncCode = code; saveSyncCode();
-    syncApi = resolveApi(); saveSyncApi();
+    syncApi = api; saveSyncApi();
     setStatus('下載中…');
     try{
       const res = await fetch(`${syncApi}/api/data/pull`, {
