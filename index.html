@@ -81,6 +81,7 @@
   .task-name.done{color:var(--tx3);text-decoration:line-through;font-weight:500}
   .task-period{font-size:13.5px;color:var(--tx2);font-weight:600}
   .task-section-label{align-self:flex-start;display:inline-block;font-size:13.5px;color:#5FD9A0;font-weight:800;background:var(--bg2);border-radius:8px;padding:5px 12px;margin:14px 0 8px}
+  .done-label{color:#8B93A8!important}
   .tool-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
   .tool-btn{flex:1 1 0;min-width:0;background:none;border:1.5px solid var(--bd);border-radius:12px;padding:10px 6px;font-size:13.5px;font-weight:600;color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tool-btn:active{background:var(--card)}
@@ -626,12 +627,12 @@ function renderChecklist(){
   }
 
   const PERIOD_ORDER = ['month','quarter','halfyear','year'];
-  function renderByPeriod(taskList){
+  function renderByPeriod(taskList, doneStyle){
     PERIOD_ORDER.forEach(p=>{
       const group = taskList.filter(t=>t.period===p);
       if(!group.length) return;
       const sub = document.createElement('div');
-      sub.className = 'm-sub-label';
+      sub.className = doneStyle ? 'm-sub-label done-label' : 'm-sub-label';
       sub.textContent = PERIOD_LABELS[p];
       list.appendChild(sub);
       group.forEach(renderTaskRow);
@@ -651,10 +652,10 @@ function renderChecklist(){
     }
     if(done.length){
       const label = document.createElement('div');
-      label.className = 'task-section-label';
+      label.className = 'task-section-label done-label';
       label.textContent = `已完成（${done.length}）`;
       list.appendChild(label);
-      renderByPeriod(done);
+      renderByPeriod(done, true);
     }
   }
 
