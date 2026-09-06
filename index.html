@@ -274,13 +274,38 @@ function getEntry(mk, cardId){
   if(!raw) return null;
   return typeof raw === 'string' ? {state: raw} : raw; // 相容舊字串格式
 }
+function isViewingCurMonth(){
+  return curYear===today.getFullYear() && curMonth===today.getMonth();
+}
+// 只有在瀏覽「真正的本月」時才會往前找：如果本月自己還沒有紀錄，
+// 就看前 1~2 個月是不是還有一筆「已使用待繳」沒結清——結帳日跨月的卡（例如月底才結帳、
+// 下個月中才截止）常常會遇到「用卡當月標了待繳，等到繳費時已經跨到下個月」的狀況，
+// 這樣月份切換時不會憑空多開一筆新紀錄，也不會讓已繳的提醒跑到下個月還在跳。
+function findOutstandingEntry(cardId){
+  for(let i=1;i<=2;i++){
+    let m = curMonth - i, y = curYear;
+    if(m<0){ m+=12; y-=1; }
+    const mk = monthKey(y,m);
+    const entry = getEntry(mk, cardId);
+    if(entry && entry.state==='used') return {mk, entry};
+  }
+  return null;
+}
+function getEffective(cardId){
+  const mk = monthKey(curYear, curMonth);
+  const entry = getEntry(mk, cardId);
+  if(entry) return {mk, entry};
+  if(isViewingCurMonth()){
+    const outstanding = findOutstandingEntry(cardId);
+    if(outstanding) return outstanding;
+  }
+  return {mk, entry:{state:'none'}};
+}
 function getState(cardId){
-  const entry = getEntry(monthKey(curYear, curMonth), cardId);
-  return entry ? entry.state : 'none';
+  return getEffective(cardId).entry.state;
 }
 function getAmount(cardId){
-  const entry = getEntry(monthKey(curYear, curMonth), cardId);
-  return entry ? entry.amt : undefined;
+  return getEffective(cardId).entry.amt;
 }
 function parseBalanceNum(balance){
   const m = (balance||'').match(/-?\d+(\.\d+)?/);
@@ -294,9 +319,8 @@ function setBalanceNum(c, n){
   render();
 }
 function cycleState(cardId){
-  const mk = monthKey(curYear, curMonth);
+  const { mk, entry } = getEffective(cardId);
   if(!records[mk]) records[mk] = {};
-  const entry = getEntry(mk, cardId) || {state:'none'};
   if(entry.state==='none'){
     records[mk][cardId] = {state:'used'};
   }else if(entry.state==='used'){
@@ -760,10 +784,14 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
     body += `</div>`;
   }
 
+  const todayHalf = today.getMonth()<6 ? 1 : 2;
+  const todayQuarter = Math.floor(today.getMonth()/3)+1;
+
   const halfTasks = tasks.filter(t=>t.period==='halfyear');
   if(halfTasks.length){
     body += `<div class="year-block"><div class="m-title">📌 ${y} 每半年提醒</div>`;
     [1,2].forEach(h=>{
+      if(y>today.getFullYear() || (y===today.getFullYear() && h>todayHalf)) return; // 還沒到的半年先不顯示
       const pk = `${y}-H${h}`;
       body += `<div class="m-sub-label">${h===1?'上半年':'下半年'}</div>`;
       halfTasks.forEach(t=>{
@@ -778,6 +806,7 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
   if(quarterTasks.length){
     body += `<div class="year-block"><div class="m-title">📌 ${y} 每季提醒</div>`;
     [1,2,3,4].forEach(q=>{
+      if(y>today.getFullYear() || (y===today.getFullYear() && q>todayQuarter)) return; // 還沒到的季先不顯示
       const pk = `${y}-Q${q}`;
       body += `<div class="m-sub-label">第${q}季</div>`;
       quarterTasks.forEach(t=>{
@@ -794,7 +823,8 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
     const items = Object.keys(rec)
       .map(id=>{ const e = getEntry(mk, id); return {card:cardMap[id], state:e.state, amt:e.amt}; })
       .filter(x=>x.card); // 忽略已刪除的卡片
-    const monthTasks = tasks.filter(t=>t.period==='month');
+    const isFutureMonth = y>today.getFullYear() || (y===today.getFullYear() && m>today.getMonth());
+    const monthTasks = isFutureMonth ? [] : tasks.filter(t=>t.period==='month');
     const isThisMonth = y===today.getFullYear() && m===today.getMonth();
     const monthTitle = isThisMonth ? `${m+1} 月　<span class="this-month-tag">本月</span>` : `${m+1} 月`;
     body += `<div class="year-block${isThisMonth?' this-month':''}"><div class="m-title">${monthTitle}</div>`;
