@@ -62,7 +62,6 @@
   .expiry-warn b{color:var(--used)}
   .expiry-bad{color:#FF6B6A;font-weight:700}
   .expiry-bad b{color:#FF6B6A}
-  body.hide-bd .bd-toggle{display:none}
   .type-badge{font-size:11.5px;font-weight:700;color:var(--accent);margin-left:6px;vertical-align:middle}
   .view-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
   .view-tab{flex:1;min-width:0;background:none;border:1.5px solid var(--bd);border-radius:12px;padding:9px 6px;font-size:12px;font-weight:700;color:var(--tx3);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -343,9 +342,9 @@ function render(){
       const stateLabel = state==='none' ? '未使用' : state==='used' ? '已使用待繳' : (amt ? `✓ 已繳 $${amt.toLocaleString()}` : '✓ 已繳');
       const dateParts = [];
       const warnParts = [];
-      if(c.billDay) dateParts.push(`<span class="bd-toggle">結帳 <b>${c.billDay}</b> 號</span>`);
+      if(c.billDay && !hideBd) dateParts.push(`結帳 <b>${c.billDay}</b> 號`);
       if(c.dueDay){
-        dateParts.push(`<span class="bd-toggle">截止 <b>${c.dueDay}</b> 號</span>`);
+        if(!hideBd) dateParts.push(`截止 <b>${c.dueDay}</b> 號`);
         if(state==='used'){
           const dueDays = daysUntilDueDay(c.dueDay);
           if(dueDays!==null && dueDays<=7){
@@ -660,13 +659,13 @@ function renderChecklist(){
 
 // ── 結帳/截止日顯示切換 ────────────────────────────────
 function applyHideBd(){
-  document.body.classList.toggle('hide-bd', hideBd);
   document.getElementById('toggle-bd-btn').textContent = hideBd ? '📅 顯示日期' : '📅 隱藏日期';
 }
 document.getElementById('toggle-bd-btn').addEventListener('click', ()=>{
   hideBd = !hideBd;
   try{ localStorage.setItem('cardpay_hidebd', hideBd ? '1' : '0'); }catch(e){}
   applyHideBd();
+  render();
 });
 
 // ── 事件 ──────────────────────────────────────────────
