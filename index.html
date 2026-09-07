@@ -55,6 +55,16 @@
   .dot.used{background:var(--used)}
   .dot.paid{background:var(--paid)}
   .card-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .card-row-v2 .cardv2-main{width:100%;display:flex;flex-direction:column;gap:2px}
+  .cardv2-bank{font-size:12px;color:#B7AEFF;font-weight:700}
+  .cardv2-name{font-size:17.5px;color:var(--tx);font-weight:700}
+  .cardv2-actions{display:flex;align-items:center;gap:16px;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);flex-wrap:wrap}
+  .cardv2-link{font-size:13px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap}
+  .cardv2-link.is-fav{color:#F5C242}
+  .cardv2-link.is-recurring{color:var(--accent)}
+  .cardv2-link.del-link{color:#E24B4A}
+  .cardv2-link.state-used{color:#5FB3E8}
+  .cardv2-link.state-paid{color:var(--paid)}
   .card-dates{font-size:13.5px;color:var(--tx2)}
   .card-dates.lg{font-size:15px}
   .card-dates b{color:var(--tx);font-weight:700}
@@ -404,20 +414,84 @@ function render(){
       const warnLine = warnParts.length ? `<span class="${datesCls}">${warnParts.join('　')}</span>` : '';
       const typeBadge = (c.type && c.type!=='信用卡') ? `<span class="type-badge">${c.type}</span>` : '';
       const qtyNumStr = hasQty ? (parseBalanceNum(c.balance) || '0') : null;
-      const actionHtml = hasQty
-        ? `<div class="qty-ctrl"><button class="qty-num">${qtyNumStr}</button></div>`
-        : `<button class="state-btn state-${state}">${stateLabel}</button>`;
+
+      if(currentView==='card'){
+        // 試驗版排版：銀行名稱在上、標題加大、底下改文字連結式操作列
+        row.classList.add('card-row-v2');
+        const bankLine = c.bank ? `<div class="cardv2-bank">${c.bank}</div>` : '';
+        row.innerHTML = `
+          <div class="cardv2-main">
+            ${bankLine}
+            <div class="cardv2-name">${c.name}</div>
+            ${dateLine}
+            ${warnLine}
+            <div class="cardv2-actions">
+              <span class="cardv2-link fav-link ${c.fav?'is-fav':''}">${c.fav?'★':'☆'} 常用</span>
+              <span class="cardv2-link recurring-link ${c.recurring?'is-recurring':''}">🔁 固定</span>
+              <span class="cardv2-link state-link state-${state}">${stateLabel}</span>
+              <span style="flex:1"></span>
+              <span class="cardv2-link del-link">刪除</span>
+            </div>
+          </div>
+        `;
+        row.querySelector('.fav-link').addEventListener('click', (e)=>{
+          e.stopPropagation();
+          c.fav = !c.fav;
+          saveCards();
+          render();
+        });
+        row.querySelector('.recurring-link').addEventListener('click', (e)=>{
+          e.stopPropagation();
+          c.recurring = !c.recurring;
+          saveCards();
+          render();
+        });
+        row.querySelector('.state-link').addEventListener('click', (e)=>{
+          e.stopPropagation();
+          cycleState(c.id);
+        });
+        row.querySelector('.del-link').addEventListener('click', (e)=>{
+          e.stopPropagation();
+          if(!confirm(`確定要刪除「${c.name}」這張卡片嗎？`)) return;
+          cards = cards.filter(x=>x.id!==c.id);
+          Object.keys(records).forEach(mk=>{ delete records[mk][c.id]; });
+          saveCards();
+          saveRecords();
+          render();
+        });
+        row.querySelector('.cardv2-name').addEventListener('click', ()=>{
+          const name = prompt('卡片名稱', c.name);
+          if(name===null) return;
+          if(!name.trim()){ alert('名稱不能空白'); return; }
+          const bank = prompt('銀行（用來分組，留空清除）', c.bank || '');
+          if(bank===null) return;
+          const bill = prompt('結帳日（1-31，留空清除）', c.billDay || '');
+          if(bill===null) return;
+          const due = prompt('繳費截止日（1-31，留空清除）', c.dueDay || '');
+          if(due===null) return;
+          const b = parseInt(bill,10), d = parseInt(due,10);
+          c.name = name.trim();
+          c.bank = bank.trim() || undefined;
+          c.type = undefined;
+          c.billDay = (b>=1 && b<=31) ? b : undefined;
+          c.dueDay = (d>=1 && d<=31) ? d : undefined;
+          saveCards();
+          render();
+        });
+        list.appendChild(row);
+        return;
+      }
+
       row.innerHTML = `
         <div class="mark-btns">
           <button class="fav-btn ${c.fav?'is-fav':''}">${c.fav?'★':'☆'}</button>
-          ${hasQty ? '' : `<button class="recurring-btn ${c.recurring?'is-recurring':''}" title="固定每月要繳費">🔁</button>`}
         </div>
         <div class="card-main">
           <span class="card-name">${c.name}</span>${typeBadge}
           ${dateLine}
           ${warnLine}
         </div>
-        ${actionHtml}
+        <div class="qty-ctrl"><button class="qty-num">${qtyNumStr}</button></div>
         <button class="del-btn">✕</button>
       `;
       row.querySelector('.fav-btn').addEventListener('click', (e)=>{
@@ -426,54 +500,31 @@ function render(){
         saveCards();
         render();
       });
-      if(!hasQty){
-        row.querySelector('.recurring-btn').addEventListener('click', (e)=>{
-          e.stopPropagation();
-          c.recurring = !c.recurring;
-          saveCards();
-          render();
-        });
-      }
-      if(hasQty){
-        row.querySelector('.qty-num').addEventListener('click', ()=>{
-          const input = prompt('剩餘數量', qtyNumStr);
-          if(input===null) return;
-          const n = parseFloat(input);
-          if(isNaN(n)){ alert('請輸入數字'); return; }
-          setBalanceNum(c, n);
-        });
-      }else{
-        row.querySelector('.state-btn').addEventListener('click', ()=>cycleState(c.id));
-      }
+      row.querySelector('.qty-num').addEventListener('click', ()=>{
+        const input = prompt('剩餘數量', qtyNumStr);
+        if(input===null) return;
+        const n = parseFloat(input);
+        if(isNaN(n)){ alert('請輸入數字'); return; }
+        setBalanceNum(c, n);
+      });
       row.querySelector('.card-main').addEventListener('click', ()=>{
         const name = prompt('卡片名稱', c.name);
         if(name===null) return;
         if(!name.trim()){ alert('名稱不能空白'); return; }
-        const bank = prompt(currentView==='other' ? '業者（用來分組，留空清除）' : '銀行（用來分組，留空清除）', c.bank || '');
+        const bank = prompt('業者（用來分組，留空清除）', c.bank || '');
         if(bank===null) return;
         c.name = name.trim();
         c.bank = bank.trim() || undefined;
 
-        if(currentView==='other'){
-          const type = prompt('類型（行動支付／集點／其他，留空預設其他）', c.type || '其他');
-          if(type===null) return;
-          const balance = prompt('剩餘可用額度/點數（例如 500點、$1200，留空清除）', c.balance || '');
-          if(balance===null) return;
-          const expiry = prompt('使用期限（例如 2026-12-31，留空清除）', c.expiry || '');
-          if(expiry===null) return;
-          c.type = type.trim() || '其他';
-          c.balance = balance.trim() || undefined;
-          c.expiry = expiry.trim() || undefined;
-        }else{
-          const bill = prompt('結帳日（1-31，留空清除）', c.billDay || '');
-          if(bill===null) return;
-          const due = prompt('繳費截止日（1-31，留空清除）', c.dueDay || '');
-          if(due===null) return;
-          const b = parseInt(bill,10), d = parseInt(due,10);
-          c.type = undefined;
-          c.billDay = (b>=1 && b<=31) ? b : undefined;
-          c.dueDay = (d>=1 && d<=31) ? d : undefined;
-        }
+        const type = prompt('類型（行動支付／集點／其他，留空預設其他）', c.type || '其他');
+        if(type===null) return;
+        const balance = prompt('剩餘可用額度/點數（例如 500點、$1200，留空清除）', c.balance || '');
+        if(balance===null) return;
+        const expiry = prompt('使用期限（例如 2026-12-31，留空清除）', c.expiry || '');
+        if(expiry===null) return;
+        c.type = type.trim() || '其他';
+        c.balance = balance.trim() || undefined;
+        c.expiry = expiry.trim() || undefined;
         saveCards();
         render();
       });
