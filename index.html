@@ -1015,6 +1015,50 @@ document.getElementById('import-file').addEventListener('change', (e)=>{
 function saveSyncCode(){ try{ localStorage.setItem('cardpay_synccode', syncCode); }catch(e){} }
 function saveSyncApi(){ try{ localStorage.setItem('cardpay_syncapi', syncApi); }catch(e){} }
 
+// ── 推播通知 ──────────────────────────────────────────
+function getUserId(){
+  let id = '';
+  try{ id = localStorage.getItem('cardpay_userid') || ''; }catch(e){}
+  if(!id){
+    id = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try{ localStorage.setItem('cardpay_userid', id); }catch(e){}
+  }
+  return id;
+}
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+async function subscribePush(api, syncCodeVal){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    throw new Error('這個瀏覽器不支援推播通知');
+  }
+  const permission = await Notification.requestPermission();
+  if(permission !== 'granted') throw new Error('沒有允許通知權限');
+  const reg = await navigator.serviceWorker.ready;
+  const keyRes = await fetch(`${api}/api/vapid-key`);
+  const { publicKey } = await keyRes.json();
+  if(!publicKey) throw new Error('無法取得推播金鑰');
+  let sub = await reg.pushManager.getSubscription();
+  if(!sub){
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+  }
+  const res = await fetch(`${api}/api/subscribe`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ userId: getUserId(), subscription: sub.toJSON(), syncCode: syncCodeVal, deviceLabel: navigator.userAgent.slice(0,60) })
+  });
+  const json = await res.json();
+  if(!res.ok || json.error) throw new Error(json.error || '訂閱失敗');
+}
+
 document.getElementById('sync-btn').addEventListener('click', ()=>{
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -1034,6 +1078,12 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
         <button class="tool-btn" id="sync-pull-btn">⬇️ 從雲端下載</button>
       </div>
       <div class="m-empty" id="sync-status" style="text-align:center;padding:4px 0"></div>
+      <div class="tool-bar" style="margin:14px 0 6px">
+        <button class="tool-btn" id="notify-subscribe-btn">🔔 開啟通知</button>
+        <button class="tool-btn" id="notify-test-btn">🧪 測試推播</button>
+        <button class="tool-btn" id="notify-unsub-btn">🔕 關閉通知</button>
+      </div>
+      <div class="m-empty" id="notify-status" style="text-align:center;padding:4px 0"></div>
     </div>
   `;
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
@@ -1099,6 +1149,62 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
       setStatus(`✓ 已下載並套用（${new Date().toLocaleTimeString('zh-TW')}）`);
     }catch(err){
       setStatus(`✕ 下載失敗：${err.message}`);
+    }
+  });
+
+  const notifyStatusEl = overlay.querySelector('#notify-status');
+  const setNotifyStatus = (text) => { notifyStatusEl.textContent = text; };
+
+  overlay.querySelector('#notify-subscribe-btn').addEventListener('click', async ()=>{
+    const code = codeInp.value.trim();
+    if(!code){ alert('請先輸入同步代碼'); return; }
+    const api = resolveApi();
+    if(!api){ alert('請先填寫 Worker 網址'); return; }
+    syncCode = code; saveSyncCode();
+    syncApi = api; saveSyncApi();
+    setNotifyStatus('開啟中…');
+    try{
+      await subscribePush(api, code);
+      setNotifyStatus('✓ 通知已開啟，快到期的信用卡會推播提醒');
+    }catch(err){
+      setNotifyStatus(`✕ 開啟失敗：${err.message}`);
+    }
+  });
+
+  overlay.querySelector('#notify-test-btn').addEventListener('click', async ()=>{
+    const api = resolveApi();
+    if(!api){ alert('請先填寫 Worker 網址'); return; }
+    setNotifyStatus('發送測試推播中…');
+    try{
+      const res = await fetch(`${api}/api/test-push`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ userId: getUserId() })
+      });
+      const json = await res.json();
+      if(!json.ok) throw new Error(json.error || '測試推播失敗');
+      setNotifyStatus('✓ 已發送測試推播，等一下看手機通知');
+    }catch(err){
+      setNotifyStatus(`✕ 測試失敗：${err.message}`);
+    }
+  });
+
+  overlay.querySelector('#notify-unsub-btn').addEventListener('click', async ()=>{
+    const api = resolveApi();
+    if(!api){ alert('請先填寫 Worker 網址'); return; }
+    setNotifyStatus('關閉中…');
+    try{
+      await fetch(`${api}/api/unsubscribe`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ userId: getUserId() })
+      });
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg && await reg.pushManager.getSubscription();
+      if(sub) await sub.unsubscribe();
+      setNotifyStatus('✓ 已關閉這台裝置的通知');
+    }catch(err){
+      setNotifyStatus(`✕ 關閉失敗：${err.message}`);
     }
   });
 });

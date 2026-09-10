@@ -15,6 +15,29 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data.json(); } catch (err) {}
+  const title = data.title || '💳 信用卡繳費管理';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || './icon-192.png',
+    badge: data.badge || './icon-192.png',
+    tag: data.tag || 'cardpay-reminder',
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then((clients) => {
+      for (const c of clients) { if ('focus' in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+    })
+  );
+});
+
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
