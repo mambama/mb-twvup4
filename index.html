@@ -379,7 +379,7 @@ function render(){
           }
         }
       }
-      if(c.balance) dateParts.push(`<span class="balance-val">剩餘 ${c.balance}</span>`);
+      if(c.balance && !isOtherType(c)) dateParts.push(`<span class="balance-val">剩餘 ${c.balance}</span>`);
       if(c.expiry){
         const days = daysUntil(c.expiry);
         dateParts.push(`期限 <b>${c.expiry}</b>`);
@@ -472,7 +472,7 @@ function render(){
           ${warnLine}
           <div class="cardv2-actions">
             <span class="cardv2-link fav-link ${c.fav?'is-fav':''}">${c.fav?'★':'☆'}</span>
-            <span class="cardv2-link qty-link">${qtyNumStr}</span>
+            <span class="cardv2-link qty-link">剩餘 ${qtyNumStr}</span>
             <span style="flex:1"></span>
             <span class="cardv2-link del-link">✕</span>
           </div>
