@@ -849,10 +849,12 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
   const yearTasks = tasks.filter(t=>t.period==='year' && taskExistsInPeriod(t,y,null));
   if(yearTasks.length){
     body += `<div class="year-block"><div class="m-title">📌 ${y} 年度提醒</div>`;
-    yearTasks.forEach(t=>{
-      const done = !!(taskDone[t.id] && taskDone[t.id][String(y)]);
-      body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
-    });
+    yearTasks
+      .map(t=>({t, done: !!(taskDone[t.id] && taskDone[t.id][String(y)])}))
+      .sort((a,b)=>a.done-b.done)
+      .forEach(({t,done})=>{
+        body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+      });
     body += `</div>`;
   }
 
@@ -866,10 +868,12 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
       if(y>today.getFullYear() || (y===today.getFullYear() && h>todayHalf)) return; // 還沒到的半年先不顯示
       const pk = `${y}-H${h}`;
       body += `<div class="m-sub-label">${h===1?'上半年':'下半年'}</div>`;
-      halfTasks.filter(t=>taskExistsInPeriod(t,y,h)).forEach(t=>{
-        const done = !!(taskDone[t.id] && taskDone[t.id][pk]);
-        body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
-      });
+      halfTasks.filter(t=>taskExistsInPeriod(t,y,h))
+        .map(t=>({t, done: !!(taskDone[t.id] && taskDone[t.id][pk])}))
+        .sort((a,b)=>a.done-b.done)
+        .forEach(({t,done})=>{
+          body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+        });
     });
     body += `</div>`;
   }
@@ -881,10 +885,12 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
       if(y>today.getFullYear() || (y===today.getFullYear() && q>todayQuarter)) return; // 還沒到的季先不顯示
       const pk = `${y}-Q${q}`;
       body += `<div class="m-sub-label">第${q}季</div>`;
-      quarterTasks.filter(t=>taskExistsInPeriod(t,y,q)).forEach(t=>{
-        const done = !!(taskDone[t.id] && taskDone[t.id][pk]);
-        body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
-      });
+      quarterTasks.filter(t=>taskExistsInPeriod(t,y,q))
+        .map(t=>({t, done: !!(taskDone[t.id] && taskDone[t.id][pk])}))
+        .sort((a,b)=>a.done-b.done)
+        .forEach(({t,done})=>{
+          body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+        });
     });
     body += `</div>`;
   }
@@ -908,6 +914,7 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
         body += `<div class="m-empty">沒有使用紀錄</div>`;
       }else{
         let monthTotal = 0;
+        items.sort((a,b)=>(a.state==='paid')-(b.state==='paid')); // 待繳先排，已繳排後面
         items.forEach(x=>{
           const label = x.state==='paid' ? (x.amt ? `✓ 已繳 $${x.amt.toLocaleString()}` : '✓ 已繳') : '待繳';
           if(x.state==='paid' && x.amt) monthTotal += x.amt;
@@ -917,10 +924,12 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
       }
       if(monthTasks.length){
         body += `<div class="m-sub-label">📌 提醒</div>`;
-        monthTasks.forEach(t=>{
-          const done = !!(taskDone[t.id] && taskDone[t.id][mk]);
-          body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
-        });
+        monthTasks
+          .map(t=>({t, done: !!(taskDone[t.id] && taskDone[t.id][mk])}))
+          .sort((a,b)=>a.done-b.done)
+          .forEach(({t,done})=>{
+            body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
+          });
       }
     }
     body += `</div>`;
@@ -936,6 +945,8 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
   overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
   overlay.querySelector('.modal-close').addEventListener('click', ()=>overlay.remove());
   document.body.appendChild(overlay);
+  const thisMonthBlock = overlay.querySelector('.year-block.this-month');
+  if(thisMonthBlock) thisMonthBlock.scrollIntoView({block:'start'});
 });
 
 // ── 重置本月 ──────────────────────────────────────────
