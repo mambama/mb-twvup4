@@ -42,7 +42,7 @@
   @keyframes rowFlash{0%{background:var(--accent);box-shadow:0 0 0 2px var(--accent)}100%{background:var(--card);box-shadow:0 0 0 0 transparent}}
   .just-changed{animation:rowFlash 1.4s ease-out}
   .cardv2-bank{font-size:12px;color:var(--tx3);font-weight:700}
-  .cardv2-name{font-size:21px;color:var(--tx);font-weight:700}
+  .cardv2-name{font-size:21px;color:var(--tx);font-weight:700;cursor:pointer}
   .cardv2-name.done{color:var(--tx3);text-decoration:line-through;font-weight:500}
   .cardv2-actions{display:flex;align-items:center;gap:16px;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);flex-wrap:wrap}
   .cardv2-link{font-size:15px;font-weight:700;color:var(--tx2);cursor:pointer;white-space:nowrap;padding:8px 4px;margin:-8px -4px}
@@ -696,6 +696,18 @@ function renderChecklist(){
       </div>
     `;
     row.querySelector('.done-link').addEventListener('click', ()=>toggleTaskDone(t));
+    row.querySelector('.cardv2-name').addEventListener('click', ()=>{
+      const name = prompt('提醒項目名稱', t.name);
+      if(name===null) return;
+      if(!name.trim()){ alert('名稱不能空白'); return; }
+      const periodText = prompt('週期（輸入：每月／每季／每半年／每年）', PERIOD_LABELS[t.period] || '每月');
+      if(periodText===null) return;
+      const found = Object.keys(PERIOD_LABELS).find(k=>PERIOD_LABELS[k]===periodText.trim());
+      t.name = name.trim();
+      if(found) t.period = found;
+      saveTasks();
+      render();
+    });
     row.querySelector('.del-link').addEventListener('click', ()=>{
       if(!confirm(`確定要刪除「${t.name}」這個提醒項目嗎？`)) return;
       tasks = tasks.filter(x=>x.id!==t.id);
