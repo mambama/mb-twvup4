@@ -819,7 +819,7 @@ document.getElementById('add-task-btn').addEventListener('click', ()=>{
   const periodInp = document.getElementById('task-period-input');
   const val = inp.value.trim();
   if(!val) return;
-  tasks.push({id:nextTaskId++, name:val, period:periodInp.value});
+  tasks.push({id:nextTaskId++, name:val, period:periodInp.value, createdY:today.getFullYear(), createdM:today.getMonth()});
   saveTasks();
   inp.value=''; inp.focus();
   render();
@@ -828,13 +828,25 @@ document.getElementById('task-input').addEventListener('keydown', e=>{
   if(e.key==='Enter') document.getElementById('add-task-btn').click();
 });
 
+// 判斷任務在指定的年/週期單位（月0-11／半年1-2／季1-4）當下是否已經存在，還沒新增的舊期間不顯示
+function taskExistsInPeriod(t, y, unit){
+  if(t.createdY===undefined) return true; // 舊資料沒記錄建立時間，視為一直都有
+  if(y < t.createdY) return false;
+  if(y > t.createdY) return true;
+  if(t.period==='year') return true;
+  if(t.period==='month') return unit >= t.createdM;
+  if(t.period==='quarter') return unit >= (Math.floor(t.createdM/3)+1);
+  if(t.period==='halfyear') return unit >= (t.createdM<6?1:2);
+  return true;
+}
+
 // ── 年度總覽 ──────────────────────────────────────────
 document.getElementById('yearly-btn').addEventListener('click', ()=>{
   const y = curYear;
   const cardMap = {}; cards.forEach(c=>cardMap[c.id]=c);
   let body = '';
 
-  const yearTasks = tasks.filter(t=>t.period==='year');
+  const yearTasks = tasks.filter(t=>t.period==='year' && taskExistsInPeriod(t,y,null));
   if(yearTasks.length){
     body += `<div class="year-block"><div class="m-title">📌 ${y} 年度提醒</div>`;
     yearTasks.forEach(t=>{
@@ -854,7 +866,7 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
       if(y>today.getFullYear() || (y===today.getFullYear() && h>todayHalf)) return; // 還沒到的半年先不顯示
       const pk = `${y}-H${h}`;
       body += `<div class="m-sub-label">${h===1?'上半年':'下半年'}</div>`;
-      halfTasks.forEach(t=>{
+      halfTasks.filter(t=>taskExistsInPeriod(t,y,h)).forEach(t=>{
         const done = !!(taskDone[t.id] && taskDone[t.id][pk]);
         body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
       });
@@ -869,7 +881,7 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
       if(y>today.getFullYear() || (y===today.getFullYear() && q>todayQuarter)) return; // 還沒到的季先不顯示
       const pk = `${y}-Q${q}`;
       body += `<div class="m-sub-label">第${q}季</div>`;
-      quarterTasks.forEach(t=>{
+      quarterTasks.filter(t=>taskExistsInPeriod(t,y,q)).forEach(t=>{
         const done = !!(taskDone[t.id] && taskDone[t.id][pk]);
         body += `<div class="m-item"><span class="dot ${done?'paid':'used'}"></span>${t.name}（${done?'✓ 已完成':'未完成'}）</div>`;
       });
@@ -884,7 +896,7 @@ document.getElementById('yearly-btn').addEventListener('click', ()=>{
       .map(id=>{ const e = getEntry(mk, id); return {card:cardMap[id], state:e.state, amt:e.amt}; })
       .filter(x=>x.card); // 忽略已刪除的卡片
     const isFutureMonth = y>today.getFullYear() || (y===today.getFullYear() && m>today.getMonth());
-    const monthTasks = isFutureMonth ? [] : tasks.filter(t=>t.period==='month');
+    const monthTasks = isFutureMonth ? [] : tasks.filter(t=>t.period==='month' && taskExistsInPeriod(t,y,m));
     const isThisMonth = y===today.getFullYear() && m===today.getMonth();
     const monthTitle = isThisMonth ? `${m+1} 月　<span class="this-month-tag">本月</span>` : `${m+1} 月`;
     body += `<div class="year-block${isThisMonth?' this-month':''}"><div class="m-title">${monthTitle}</div>`;
