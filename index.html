@@ -39,6 +39,8 @@
   .dot.used{background:var(--used)}
   .dot.paid{background:var(--paid)}
   .card-row-v2 .cardv2-main{width:100%;display:flex;flex-direction:column;gap:2px}
+  @keyframes rowFlash{0%{background:var(--accent);box-shadow:0 0 0 2px var(--accent)}100%{background:var(--card);box-shadow:0 0 0 0 transparent}}
+  .just-changed{animation:rowFlash 1.4s ease-out}
   .cardv2-bank{font-size:12px;color:var(--tx3);font-weight:700}
   .cardv2-name{font-size:21px;color:var(--tx);font-weight:700}
   .cardv2-name.done{color:var(--tx3);text-decoration:line-through;font-weight:500}
@@ -190,6 +192,7 @@ let nextTaskId = 1;
 let syncApi = ''; // 沒有預設值，每個人要自己填自己的 Cloudflare Worker 網址
 let syncCode = '';
 let hideBd = false; // 是否隱藏結帳日/截止日
+let lastChangedId = null; // 剛點過狀態的卡片/提醒 id，用來閃一下提示移動到哪去了
 
 function loadData(){
   try{ const r=localStorage.getItem('cardpay_cards'); if(r) cards=JSON.parse(r); }catch(e){}
@@ -314,6 +317,7 @@ function setBalanceNum(c, n){
   render();
 }
 function cycleState(cardId){
+  lastChangedId = cardId;
   const { mk, entry } = getEffective(cardId);
   if(!records[mk]) records[mk] = {};
   if(entry.state==='none'){
@@ -458,6 +462,7 @@ function render(){
           saveCards();
           render();
         });
+        if(c.id===lastChangedId) row.classList.add('just-changed');
         list.appendChild(row);
         return;
       }
@@ -522,6 +527,7 @@ function render(){
         saveCards();
         render();
       });
+      if(c.id===lastChangedId) row.classList.add('just-changed');
       list.appendChild(row);
     }
 
@@ -593,6 +599,7 @@ function render(){
       if(!collapsed) groups[k].forEach(renderCardRow);
     });
   }
+  lastChangedId = null; // 這次要閃的已經處理過了，之後的 render 不用再閃
 
   if(!viewCards.length){
     document.getElementById('summary').innerHTML = '';
@@ -650,6 +657,7 @@ function taskPeriodDaysLeft(task){
   return days<=TASK_DUE_THRESHOLD[task.period] ? days : null;
 }
 function toggleTaskDone(task){
+  lastChangedId = task.id;
   const pk = taskPeriodKey(task);
   if(!taskDone[task.id]) taskDone[task.id] = {};
   if(taskDone[task.id][pk]) delete taskDone[task.id][pk];
@@ -693,6 +701,7 @@ function renderChecklist(){
       saveTasks(); saveTaskDone();
       render();
     });
+    if(t.id===lastChangedId) row.classList.add('just-changed');
     list.appendChild(row);
   }
 
@@ -731,6 +740,7 @@ function renderChecklist(){
 
   document.getElementById('checklist-summary').innerHTML =
     `共 ${tasks.length} 項　｜　這期間：<b>${pending.length}</b> 項未完成　${done.length} 項已完成`;
+  lastChangedId = null; // 這次要閃的已經處理過了，之後的 render 不用再閃
 }
 
 // ── 結帳/截止日顯示切換 ────────────────────────────────
