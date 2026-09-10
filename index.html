@@ -532,13 +532,14 @@ function render(){
     }
 
     function renderGroupLabel(key, label, count){
-      const isCollapsed = collapsedBanks.includes(key);
+      const scopedKey = currentView + ':' + key; // 分頁各自獨立記收合狀態，避免同名分組互相影響
+      const isCollapsed = collapsedBanks.includes(scopedKey);
       const el = document.createElement('div');
       el.className = 'group-label' + (isCollapsed ? ' collapsed' : '');
       el.innerHTML = `<span class="arrow">▾</span>${label}（${count}）`;
       el.addEventListener('click', ()=>{
-        if(collapsedBanks.includes(key)) collapsedBanks = collapsedBanks.filter(b=>b!==key);
-        else collapsedBanks.push(key);
+        if(collapsedBanks.includes(scopedKey)) collapsedBanks = collapsedBanks.filter(b=>b!==scopedKey);
+        else collapsedBanks.push(scopedKey);
         saveCollapsed();
         render();
       });
