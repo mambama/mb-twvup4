@@ -600,6 +600,8 @@ function render(){
     });
   }
   lastChangedId = null; // 這次要閃的已經處理過了，之後的 render 不用再閃
+  const justChangedEl = list.querySelector('.just-changed');
+  if(justChangedEl) justChangedEl.scrollIntoView({behavior:'smooth', block:'center'});
 
   if(!viewCards.length){
     document.getElementById('summary').innerHTML = '';
@@ -741,6 +743,8 @@ function renderChecklist(){
   document.getElementById('checklist-summary').innerHTML =
     `共 ${tasks.length} 項　｜　這期間：<b>${pending.length}</b> 項未完成　${done.length} 項已完成`;
   lastChangedId = null; // 這次要閃的已經處理過了，之後的 render 不用再閃
+  const justChangedTask = list.querySelector('.just-changed');
+  if(justChangedTask) justChangedTask.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
 // ── 結帳/截止日顯示切換 ────────────────────────────────
