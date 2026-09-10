@@ -72,7 +72,9 @@
   .add-dates label{flex:1;font-size:13.5px;color:var(--tx2);display:flex;flex-direction:column;gap:4px}
   .add-dates input,.add-dates select{box-sizing:border-box;height:44px;font-size:14px;padding:0 10px;border:1.5px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);outline:none;width:100%}
   .add-dates input:focus,.add-dates select:focus{border-color:var(--accent)}
-  .task-section-label{align-self:flex-start;display:inline-block;font-size:13.5px;color:#5FD9A0;font-weight:800;background:var(--bg2);border-radius:8px;padding:5px 12px;margin:14px 0 0}
+  .task-section-label{align-self:flex-start;display:inline-block;font-size:13.5px;color:#5FD9A0;font-weight:800;background:var(--bg2);border-radius:8px;padding:5px 12px;margin:14px 0 0;cursor:pointer;user-select:none}
+  .task-section-label .arrow{font-size:9px;display:inline-block;margin-right:4px;transition:transform .15s}
+  .task-section-label.collapsed .arrow{transform:rotate(-90deg)}
   .done-label{color:#3FA9F5!important}
   .tool-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
   .tool-btn{flex:1 1 0;min-width:0;background:none;border:1.5px solid var(--bd);border-radius:12px;padding:10px 6px;font-size:13.5px;font-weight:600;color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -746,11 +748,19 @@ function renderChecklist(){
       list.innerHTML += '<div class="task-section-label">🎉 這期間的項目都完成了</div>';
     }
     if(done.length){
+      const doneKey = 'checklist:done';
+      const doneCollapsed = collapsedBanks.includes(doneKey);
       const label = document.createElement('div');
-      label.className = 'task-section-label done-label';
-      label.textContent = `已完成（${done.length}）`;
+      label.className = 'task-section-label done-label' + (doneCollapsed ? ' collapsed' : '');
+      label.innerHTML = `<span class="arrow">▾</span>已完成（${done.length}）`;
+      label.addEventListener('click', ()=>{
+        if(collapsedBanks.includes(doneKey)) collapsedBanks = collapsedBanks.filter(k=>k!==doneKey);
+        else collapsedBanks.push(doneKey);
+        saveCollapsed();
+        render();
+      });
       list.appendChild(label);
-      renderByPeriod(done, true);
+      if(!doneCollapsed) renderByPeriod(done, true);
     }
   }
 
