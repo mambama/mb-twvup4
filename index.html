@@ -223,10 +223,10 @@ function cleanupOrphanRecords(){
   });
   if(changed) saveRecords();
 }
-function saveCards(){ try{ localStorage.setItem('cardpay_cards', JSON.stringify(cards)); }catch(e){} }
-function saveRecords(){ try{ localStorage.setItem('cardpay_records', JSON.stringify(records)); }catch(e){} }
-function saveTasks(){ try{ localStorage.setItem('cardpay_tasks', JSON.stringify(tasks)); }catch(e){} }
-function saveTaskDone(){ try{ localStorage.setItem('cardpay_taskdone', JSON.stringify(taskDone)); }catch(e){} }
+function saveCards(){ try{ localStorage.setItem('cardpay_cards', JSON.stringify(cards)); }catch(e){} scheduleAutoPush(); }
+function saveRecords(){ try{ localStorage.setItem('cardpay_records', JSON.stringify(records)); }catch(e){} scheduleAutoPush(); }
+function saveTasks(){ try{ localStorage.setItem('cardpay_tasks', JSON.stringify(tasks)); }catch(e){} scheduleAutoPush(); }
+function saveTaskDone(){ try{ localStorage.setItem('cardpay_taskdone', JSON.stringify(taskDone)); }catch(e){} scheduleAutoPush(); }
 function saveCollapsed(){ try{ localStorage.setItem('cardpay_collapsed', JSON.stringify(collapsedBanks)); }catch(e){} }
 function saveView(){ try{ localStorage.setItem('cardpay_view', currentView); }catch(e){} }
 
@@ -1061,6 +1061,67 @@ document.getElementById('import-file').addEventListener('change', (e)=>{
 // ── 雲端同步 ──────────────────────────────────────────
 function saveSyncCode(){ try{ localStorage.setItem('cardpay_synccode', syncCode); }catch(e){} }
 function saveSyncApi(){ try{ localStorage.setItem('cardpay_syncapi', syncApi); }catch(e){} }
+function getLocalUpdatedAt(){ try{ return parseInt(localStorage.getItem('cardpay_localupdatedat')||'0',10); }catch(e){ return 0; } }
+function setLocalUpdatedAt(ts){ try{ localStorage.setItem('cardpay_localupdatedat', String(ts)); }catch(e){} }
+
+// 每次改資料後背景自動上傳（有設定同步代碼/網址才會生效），2 秒內的多次變動只會合併上傳一次
+let autoSyncTimer = null;
+function scheduleAutoPush(){
+  if(!syncCode || !syncApi) return;
+  clearTimeout(autoSyncTimer);
+  autoSyncTimer = setTimeout(doAutoPush, 2000);
+}
+async function doAutoPush(){
+  if(!syncCode || !syncApi) return;
+  const updatedAt = Date.now();
+  try{
+    await fetch(`${syncApi}/api/data/push`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ syncCode, cards, records, tasks, taskDone, collapsedBanks, updatedAt })
+    });
+    setLocalUpdatedAt(updatedAt);
+  }catch(e){ /* 離線或失敗就算了，下次改資料或開 App 時還會再試 */ }
+}
+// 開 App 時自動比對雲端跟本機誰比較新：雲端新就自動下載套用，本機新就自動補推上去
+async function autoSyncOnLoad(){
+  if(!syncCode || !syncApi) return;
+  // 第一次套用這個功能時本機還沒有時間戳基準，先設成現在、這次跳過比對，
+  // 避免不小心被雲端的舊資料蓋掉，或誤判本機比較舊
+  let hasBaseline = true;
+  try{ hasBaseline = localStorage.getItem('cardpay_localupdatedat') !== null; }catch(e){}
+  if(!hasBaseline){ setLocalUpdatedAt(Date.now()); return; }
+  try{
+    const res = await fetch(`${syncApi}/api/data/pull`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ syncCode })
+    });
+    const json = await res.json();
+    if(!json.ok || !json.data) return;
+    const data = json.data;
+    const localUpdatedAt = getLocalUpdatedAt();
+    const cloudUpdatedAt = data.updatedAt || 0;
+    if(cloudUpdatedAt > localUpdatedAt){
+      cards = Array.isArray(data.cards) ? data.cards : [];
+      records = (data.records && typeof data.records==='object') ? data.records : {};
+      tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      taskDone = (data.taskDone && typeof data.taskDone==='object') ? data.taskDone : {};
+      collapsedBanks = Array.isArray(data.collapsedBanks) ? data.collapsedBanks : [];
+      nextId = cards.reduce((m,c)=>Math.max(m,c.id),0)+1;
+      nextTaskId = tasks.reduce((m,t)=>Math.max(m,t.id),0)+1;
+      try{ localStorage.setItem('cardpay_cards', JSON.stringify(cards)); }catch(e){}
+      try{ localStorage.setItem('cardpay_records', JSON.stringify(records)); }catch(e){}
+      try{ localStorage.setItem('cardpay_tasks', JSON.stringify(tasks)); }catch(e){}
+      try{ localStorage.setItem('cardpay_taskdone', JSON.stringify(taskDone)); }catch(e){}
+      try{ localStorage.setItem('cardpay_collapsed', JSON.stringify(collapsedBanks)); }catch(e){}
+      setLocalUpdatedAt(cloudUpdatedAt);
+      render();
+    }else if(localUpdatedAt > cloudUpdatedAt){
+      doAutoPush(); // 本機比較新，補推上去讓雲端趕上
+    }
+  }catch(e){ /* 離線就跳過，不影響離線使用 */ }
+}
 
 // ── 推播通知 ──────────────────────────────────────────
 function getUserId(){
@@ -1152,13 +1213,15 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
     syncApi = api; saveSyncApi();
     setStatus('上傳中…');
     try{
+      const updatedAt = Date.now();
       const res = await fetch(`${syncApi}/api/data/push`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ syncCode, cards, records, tasks, taskDone, collapsedBanks, updatedAt: Date.now() })
+        body: JSON.stringify({ syncCode, cards, records, tasks, taskDone, collapsedBanks, updatedAt })
       });
       const json = await res.json();
       if(!res.ok || json.error) throw new Error(json.error || '上傳失敗');
+      setLocalUpdatedAt(updatedAt);
       setStatus(`✓ 已上傳（${new Date().toLocaleTimeString('zh-TW')}）`);
     }catch(err){
       setStatus(`✕ 上傳失敗：${err.message}`);
@@ -1192,6 +1255,7 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
       nextId = cards.reduce((m,c)=>Math.max(m,c.id),0)+1;
       nextTaskId = tasks.reduce((m,t)=>Math.max(m,t.id),0)+1;
       saveCards(); saveRecords(); saveTasks(); saveTaskDone(); saveCollapsed();
+      setLocalUpdatedAt(data.updatedAt || Date.now());
       render();
       setStatus(`✓ 已下載並套用（${new Date().toLocaleTimeString('zh-TW')}）`);
     }catch(err){
@@ -1260,6 +1324,7 @@ document.getElementById('sync-btn').addEventListener('click', ()=>{
 loadData();
 applyHideBd();
 render();
+autoSyncOnLoad();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
