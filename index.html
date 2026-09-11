@@ -83,7 +83,7 @@
   .group-label:first-child{margin-top:0}
   .group-label .arrow{font-size:9px;transition:transform .15s}
   .group-label.collapsed .arrow{transform:rotate(-90deg)}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;padding:20px 14px;overflow-y:auto;z-index:100}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;padding:20px 14px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;z-index:100}
   .modal-box{background:var(--bg2);border-radius:16px;padding:18px;max-width:520px;width:100%;margin:20px 0}
   .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
   .modal-head h2{font-size:16px;margin:0}
